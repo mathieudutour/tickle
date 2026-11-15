@@ -70,6 +70,8 @@ Les originaux (environ 1 Mo chacun) vont dans `art-sources/`, qui n’est pas ve
 
 `sh scripts/art.sh` (ImageMagick 7) les compresse dans `src/assets/art/` et refait les icônes de `public/` et `public/og.jpg`. Le script efface au passage le halo pâle que les générateurs ajoutent autour des formes, qui ferait un voile gris en thème sombre.
 
+Après un changement d’icône ou de couleurs de fond, `sh scripts/splash.sh` redessine les écrans de lancement iPhone et iPad (`public/splash/`) et leurs balises dans `index.html`. Sans eux, iOS affiche un écran vide au lancement ; Android fabrique le sien à partir du manifeste.
+
 ## Déploiement
 
 Cloudflare Workers, avec les Durable Objects SQLite (`wrangler.jsonc`). `npm run deploy`, ou Workers Builds connecté au dépôt :
