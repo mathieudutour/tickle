@@ -175,7 +175,6 @@ h3 {
 
 .top-bar .side.end {
   justify-content: flex-end;
-  gap: 4px;
 }
 
 .small-title {
@@ -247,6 +246,16 @@ h3 {
 .top-bar .link-button {
   padding: 0 8px;
   min-height: 44px;
+}
+
+/* Bar icons sit close to their neighbours and match the text's weight, as on iOS. */
+.top-bar .icon-button {
+  min-width: 36px;
+  font-size: 19px;
+}
+
+.top-bar .icon-button .icon {
+  stroke-width: 1.8;
 }
 
 .search {
