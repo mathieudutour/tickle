@@ -8,6 +8,7 @@ import { Home } from "./views/Home";
 import { ListView } from "./views/ListView";
 import { Settings } from "./views/Settings";
 import { TagView } from "./views/TagView";
+import { TodayView } from "./views/TodayView";
 
 export function App() {
   const [route, navigate] = useRoute();
@@ -52,6 +53,8 @@ export function App() {
   switch (route.name) {
     case "list":
       return <ListView id={route.id} navigate={navigate} />;
+    case "today":
+      return <TodayView navigate={navigate} />;
     case "tag":
       return <TagView key={route.tag} tag={route.tag} navigate={navigate} />;
     case "settings":

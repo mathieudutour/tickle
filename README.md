@@ -4,6 +4,7 @@ Rappels et listes partagés, comme l’app Rappels d’iOS, dans une web app ins
 
 ## Ce que fait l’app
 
+- **Aujourd’hui** : les rappels du jour de toutes les listes, en retard d’abord, puis toute la journée, matin, après-midi et soir.
 - **Listes** : nom, couleur, icône, sections, réordonnées depuis l’accueil, et une vue par tag. Dans une liste, on glisse un rappel par sa poignée pour le déplacer, y compris d’une section à l’autre.
 - **Saisie rapide en français** : « Sortir les poubelles tous les mardis 20h #maison !! » donne la date, la répétition, le tag et la priorité (`src/lib/parse.ts`). Un aperçu montre ce qui a été compris.
 - **Rappels** : notes, lien, date avec ou sans heure, alerte anticipée, répétition (tous les jours, en semaine, le week-end, toutes les N semaines, mois ou années, avec une fin), priorité, tags, liste et section, sous-tâches. Cocher un rappel répétitif garde une copie terminée et passe à la date suivante.

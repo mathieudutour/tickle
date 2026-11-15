@@ -9,7 +9,7 @@ import { statusLabel } from "../components/Sharing";
 import { useUi } from "../components/UiProvider";
 import { hrefOf, type Route } from "../lib/router";
 import { useDrag } from "../lib/useDrag";
-import { openCount, search, tagsOf } from "../lib/views";
+import { dueBy, nowLocal, openCount, search, tagsOf } from "../lib/views";
 import { useStore } from "../store/StoreProvider";
 import { Header } from "./Header";
 
@@ -80,6 +80,19 @@ export function Home({ navigate }: { navigate: (route: Route) => void }) {
         </section>
       ) : (
         <>
+          <ul className="lists card">
+            <li>
+              <a href={hrefOf({ name: "today" })} className="list-row">
+                <span className="list-badge today" aria-hidden="true">
+                  <Icon name="calendar" />
+                </span>
+                <span className="name">Aujourd’hui</span>
+                <span className="count">{dueBy(space, nowLocal().date).length}</span>
+                <Icon name="chevronRight" className="chev" />
+              </a>
+            </li>
+          </ul>
+
           <h2 className="home-title">Mes listes</h2>
           <ul className="lists card" ref={container}>
             {lists.map((list) => (

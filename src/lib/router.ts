@@ -4,6 +4,7 @@ import { useCallback, useEffect, useSyncExternalStore } from "react";
 export type Route =
   | { name: "home" }
   | { name: "list"; id: string }
+  | { name: "today" }
   | { name: "tag"; tag: string }
   | { name: "settings" };
 
@@ -13,6 +14,8 @@ export function hrefOf(route: Route): string {
       return "#";
     case "list":
       return `#liste=${encodeURIComponent(route.id)}`;
+    case "today":
+      return "#aujourdhui";
     case "tag":
       return `#tag=${encodeURIComponent(route.tag)}`;
     case "settings":
@@ -26,6 +29,7 @@ export function parseRoute(hash: string): Route {
   if (name === "liste" && decoded) return { name: "list", id: decoded };
   if (name === "tag" && decoded) return { name: "tag", tag: decoded };
   if (name === "reglages") return { name: "settings" };
+  if (name === "aujourdhui") return { name: "today" };
   return { name: "home" };
 }
 

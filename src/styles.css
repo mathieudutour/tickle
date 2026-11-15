@@ -728,6 +728,20 @@ h3 {
   outline: none;
 }
 
+.section-title.static.late {
+  color: var(--danger);
+}
+
+.list-badge.today {
+  background: var(--tint-fill);
+  color: #fff;
+}
+
+.list-badge.today .icon {
+  width: 18px;
+  height: 18px;
+}
+
 .section-title.static,
 [data-drop="into"] input {
   color: var(--accent);

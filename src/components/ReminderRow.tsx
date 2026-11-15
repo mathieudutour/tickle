@@ -11,6 +11,7 @@ import {
 import type { Reminder } from "../shared/space";
 import { useStore } from "../store/StoreProvider";
 import { Icon } from "./Icon";
+import { timeLabel } from "../lib/dates";
 import { ReminderSheet } from "./ReminderSheet";
 import { useUi } from "./UiProvider";
 
@@ -18,6 +19,8 @@ interface Props {
   reminder: Reminder;
   /** Shown in the tag view and search results, where reminders of several lists mix. */
   showList?: boolean;
+  /** The day is already in the screen's title (Today): reminders due today show only their time. */
+  timeOnly?: boolean;
   showCompleted?: boolean;
   /** Called when the reminder is checked, so the list can keep it on screen for a moment. */
   onCompleted?: (id: string) => void;
@@ -32,6 +35,7 @@ const PRIORITY_MARKS = ["", "!", "!!", "!!!"];
 export function ReminderRow({
   reminder,
   showList,
+  timeOnly,
   showCompleted = false,
   onCompleted,
   onDragStart,
@@ -46,7 +50,10 @@ export function ReminderRow({
   const openChildren = children.filter((c) => !c.completed).length;
   const visibleChildren = showCompleted ? children : children.filter((c) => !c.completed);
   const overdue = isOverdue(reminder, now);
-  const due = dueLabel(reminder, now);
+  const due =
+    timeOnly && reminder.due?.date === now.date
+      ? reminder.due.time && timeLabel(reminder.due.time)
+      : dueLabel(reminder, now);
   const repeat = repeatLabel(reminder);
 
   const toggle = () => {
