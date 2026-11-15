@@ -12,19 +12,20 @@ interface Props {
 }
 
 /**
- * A screen's top bar, as on iOS: it stays at the top, and once the large title has scrolled away it turns translucent
- * and shows a small centred title.
+ * A screen's top bar, as on iOS: it stays at the top, and once the large title has scrolled away it shows a hairline
+ * and a small centred title.
  */
 export function Header({ back, title, actions, accent, children }: Props) {
   const [scrolled, setScrolled] = useState(false);
   const sentinel = useRef<HTMLDivElement>(null);
+  const bar = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const el = sentinel.current;
     if (!el) return;
-    // The bar is 44 px tall: past it, the content is under the bar.
+    // Past the bar (44 px, plus the status bar on iPhones), the content is under it.
     const observer = new IntersectionObserver(([entry]) => setScrolled(!entry!.isIntersecting), {
-      rootMargin: "-44px 0px 0px 0px",
+      rootMargin: `-${bar.current?.offsetHeight ?? 44}px 0px 0px 0px`,
     });
     observer.observe(el);
     return () => observer.disconnect();
@@ -32,7 +33,7 @@ export function Header({ back, title, actions, accent, children }: Props) {
 
   return (
     <>
-      <div className={`top-bar${scrolled ? " scrolled" : ""}`}>
+      <div ref={bar} className={`top-bar${scrolled ? " scrolled" : ""}`}>
         <div className="side">
           {back && (
             <button className="back" onClick={back}>
