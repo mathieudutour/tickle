@@ -623,6 +623,36 @@ h3 {
   flex: 1;
 }
 
+.art {
+  display: block;
+  width: 200px;
+  max-width: 60%;
+  height: auto;
+  margin: 0 auto;
+}
+
+/* Same height whatever the drawing's shape: a tall robot shouldn't dwarf a wide bell. */
+.art.small {
+  width: auto;
+  height: 104px;
+  margin-bottom: 8px;
+}
+
+/* The illustrations' white cards need an edge on the light grey background. */
+@media (prefers-color-scheme: light) {
+  .art {
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.08));
+  }
+}
+
+.empty-state {
+  margin: 32px 0;
+}
+
+.empty-state .empty-note {
+  margin: 12px 0 0;
+}
+
 .empty-note {
   text-align: center;
   color: var(--muted);

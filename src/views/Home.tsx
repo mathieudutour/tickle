@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { EmptyState } from "../components/Art";
 import { ListEditor } from "../components/ListEditor";
 import { NewReminderSheet } from "../components/NewReminderSheet";
 import { ReminderRow } from "../components/ReminderRow";
@@ -58,7 +59,9 @@ export function Home({ navigate }: { navigate: (route: Route) => void }) {
               <ReminderRow key={r.id} reminder={r} showList showCompleted />
             ))}
           </ul>
-          {!results.length && <p className="empty-note">Aucun résultat pour « {query.trim()} »</p>}
+          {!results.length && (
+            <EmptyState art="no-results">Aucun résultat pour « {query.trim()} »</EmptyState>
+          )}
         </section>
       ) : (
         <>

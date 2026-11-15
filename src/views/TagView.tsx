@@ -1,3 +1,4 @@
+import { EmptyState } from "../components/Art";
 import { QuickAdd } from "../components/QuickAdd";
 import { ReminderRow } from "../components/ReminderRow";
 import type { Route } from "../lib/router";
@@ -25,7 +26,7 @@ export function TagView({ tag, navigate }: { tag: string; navigate: (route: Rout
           <QuickAdd defaults={{ listId: defaultList, tag }} />
         </ul>
       </section>
-      {!tagged.length && <p className="empty-note">Aucun rappel avec ce tag</p>}
+      {!tagged.length && <EmptyState art="no-results">Aucun rappel avec ce tag</EmptyState>}
     </div>
   );
 }

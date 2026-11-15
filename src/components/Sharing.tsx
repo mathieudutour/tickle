@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { renderSVG } from "uqr";
 import { useStore } from "../store/StoreProvider";
 import type { SyncStatus } from "../store/store";
+import { Art } from "./Art";
 import { useSuggestInstall } from "./InstallHint";
 import { Sheet, SheetHeader } from "./Sheet";
 import { useUi } from "./UiProvider";
@@ -23,7 +24,8 @@ export function Sharing() {
   const [confirmLeave, setConfirmLeave] = useState(false);
   const link = sync.inviteLink();
   const qr = useMemo(
-    () => (link ? renderSVG(link, { border: 1, blackColor: "#1c1c1e", whiteColor: "#ffffff" }) : ""),
+    () =>
+      link ? renderSVG(link, { border: 1, blackColor: "#1c1c1e", whiteColor: "#ffffff" }) : "",
     [link],
   );
 
@@ -31,7 +33,11 @@ export function Sharing() {
     if (!link) return;
     if (navigator.share) {
       try {
-        await navigator.share({ title: "Tickle", text: "Rejoins mes listes sur Tickle :", url: link });
+        await navigator.share({
+          title: "Tickle",
+          text: "Rejoins mes listes sur Tickle :",
+          url: link,
+        });
         return;
       } catch {
         // Cancelled, or not allowed: fall back to copying.
@@ -42,7 +48,10 @@ export function Sharing() {
 
   return (
     <>
-      <p className={`sync-status ${status.connection}${status.joined ? "" : " joining"}`} role="status">
+      <p
+        className={`sync-status ${status.connection}${status.joined ? "" : " joining"}`}
+        role="status"
+      >
         <i aria-hidden="true" /> {statusLabel(status)}
       </p>
       {link ? (
@@ -55,8 +64,8 @@ export function Sharing() {
           />
           <div className="invite-text">
             <p className="note">
-              Pour partager toutes tes listes avec quelqu’un, fais-lui scanner ce code ou envoie-lui le lien. Vous
-              verrez et cocherez les mêmes rappels, en direct.
+              Pour partager toutes tes listes avec quelqu’un, fais-lui scanner ce code ou envoie-lui
+              le lien. Vous verrez et cocherez les mêmes rappels, en direct.
             </p>
             <button className="cta slim" onClick={share}>
               Envoyer le lien
@@ -80,7 +89,9 @@ export function Sharing() {
           }}
           onBlur={() => setConfirmLeave(false)}
         >
-          {confirmLeave ? "Sûr ? Les autres ne verront plus tes changements" : "Arrêter de partager sur cet appareil"}
+          {confirmLeave
+            ? "Sûr ? Les autres ne verront plus tes changements"
+            : "Arrêter de partager sur cet appareil"}
         </button>
       )}
     </>
@@ -88,14 +99,25 @@ export function Sharing() {
 }
 
 /** Asked when opening an invitation link. */
-export function JoinSheet({ joinKey, onDone }: { joinKey: string; onDone: (joined: boolean) => void }) {
+export function JoinSheet({
+  joinKey,
+  onDone,
+}: {
+  joinKey: string;
+  onDone: (joined: boolean) => void;
+}) {
   const { space, sync } = useStore();
   const suggestInstall = useSuggestInstall();
   const count = Object.values(space.reminders).filter((r) => !r.completed).length;
   return (
     <Sheet onClose={() => onDone(false)} labelledBy="join-title">
       <div className="in">
-        <SheetHeader id="join-title" title="Rejoindre des listes partagées" onClose={() => onDone(false)} />
+        <SheetHeader
+          id="join-title"
+          title="Rejoindre des listes partagées"
+          onClose={() => onDone(false)}
+        />
+        <Art name="sharing" />
         <p>Tu vas partager les listes et les rappels de la personne qui t’a invité·e, en direct.</p>
         <p className="note spaced">
           {count

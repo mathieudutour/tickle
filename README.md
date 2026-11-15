@@ -60,6 +60,16 @@ npm run build
 
 Les notifications push ne marchent qu’avec le service worker de production : `npm run build && npx wrangler dev`, ou une fois déployé.
 
+## Illustrations et icônes
+
+Les originaux (environ 1 Mo chacun) vont dans `art-sources/`, qui n’est pas versionné :
+
+- les illustrations (`all-done`, `empty-list`, `no-results`, `sharing`, `alerts`, `agents`) ;
+- `icon.png`, l’icône de l’app, carrée et sans transparence ;
+- `og.png`, l’aperçu des liens.
+
+`sh scripts/art.sh` (ImageMagick 7) les compresse dans `src/assets/art/` et refait les icônes de `public/` et `public/og.jpg`. Le script efface au passage le halo pâle que les générateurs ajoutent autour des formes, qui ferait un voile gris en thème sombre.
+
 ## Déploiement
 
 Cloudflare Workers, avec les Durable Objects SQLite (`wrangler.jsonc`). `npm run deploy`, ou Workers Builds connecté au dépôt :

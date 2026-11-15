@@ -1,3 +1,4 @@
+import { Art } from "../components/Art";
 import { Agents } from "../components/Agents";
 import { InstallHint } from "../components/InstallHint";
 import { Sharing } from "../components/Sharing";
@@ -10,8 +11,10 @@ import { Header } from "./Header";
 
 const PUSH_TEXT = {
   unsupported: "Ce navigateur ne peut pas recevoir d’alertes.",
-  "needs-install": "Sur iPhone et iPad, les alertes arrivent une fois Tickle ajouté à l’écran d’accueil.",
-  denied: "Les notifications sont bloquées pour Tickle : autorise-les dans les réglages du navigateur.",
+  "needs-install":
+    "Sur iPhone et iPad, les alertes arrivent une fois Tickle ajouté à l’écran d’accueil.",
+  denied:
+    "Les notifications sont bloquées pour Tickle : autorise-les dans les réglages du navigateur.",
   off: "Reçois une alerte à l’heure de chaque rappel, sur cet appareil, même quand Tickle est fermé.",
   on: "Cet appareil reçoit une alerte à l’heure de chaque rappel.",
 };
@@ -27,21 +30,30 @@ export function Settings({ navigate }: { navigate: (route: Route) => void }) {
       <Header back={() => navigate({ name: "home" })} title="Réglages" />
 
       <section className="card pad">
-        <h2>🔔 Alertes</h2>
+        <Art name="alerts" small />
+        <h2>Alertes</h2>
         <p className="note">{PUSH_TEXT[push.state]}</p>
         {push.state === "off" && (
           <button
             className="cta slim"
             disabled={push.busy || !status.key}
             onClick={async () =>
-              toast((await push.enable()) ? "Alertes activées sur cet appareil" : "Alertes non activées")
+              toast(
+                (await push.enable())
+                  ? "Alertes activées sur cet appareil"
+                  : "Alertes non activées",
+              )
             }
           >
             Activer les alertes
           </button>
         )}
         {push.state === "on" && (
-          <button className="cta ghost slim" disabled={push.busy} onClick={() => void push.disable()}>
+          <button
+            className="cta ghost slim"
+            disabled={push.busy}
+            onClick={() => void push.disable()}
+          >
             Désactiver sur cet appareil
           </button>
         )}
@@ -51,7 +63,10 @@ export function Settings({ navigate }: { navigate: (route: Route) => void }) {
             <>
               {" "}
               ·{" "}
-              <button className="link-button" onClick={() => dispatch({ type: "setTimeZone", timeZone: deviceZone })}>
+              <button
+                className="link-button"
+                onClick={() => dispatch({ type: "setTimeZone", timeZone: deviceZone })}
+              >
                 Utiliser {deviceZone.replace(/_/g, " ")}
               </button>
             </>
@@ -60,20 +75,22 @@ export function Settings({ navigate }: { navigate: (route: Route) => void }) {
       </section>
 
       <section className="card pad">
-        <h2>👥 Partage</h2>
+        <Art name="sharing" small />
+        <h2>Partage</h2>
         <Sharing />
       </section>
 
       <section className="card pad">
-        <h2>🤖 Agents IA</h2>
+        <Art name="agents" small />
+        <h2>Agents IA</h2>
         {status.key ? (
           <Agents spaceKey={status.key} />
         ) : (
           <p className="note">Disponible dès que l’appareil est en ligne.</p>
         )}
         <p className="note spaced">
-          Dans un navigateur compatible WebMCP, l’agent du navigateur peut aussi utiliser Tickle directement sur cette
-          page.
+          Dans un navigateur compatible WebMCP, l’agent du navigateur peut aussi utiliser Tickle
+          directement sur cette page.
         </p>
       </section>
 

@@ -11,7 +11,13 @@ export default defineConfig({
     // Offline support is for the app only, not the Worker build.
     ...VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.ico", "apple-touch-icon.png", "badge-96.png", "push-sw.js"],
+      includeAssets: [
+        "favicon.ico",
+        "apple-touch-icon.png",
+        "badge-96.png",
+        "push-sw.js",
+        "og.jpg",
+      ],
       manifest: {
         name: "Tickle",
         short_name: "Tickle",
@@ -35,6 +41,8 @@ export default defineConfig({
       workbox: {
         // The space API is always live, never served from the offline cache.
         navigateFallbackDenylist: [/^\/api\//],
+        // Illustrations too (about 15 KB each), so empty states look right offline.
+        globPatterns: ["**/*.{js,css,html,webp}"],
         // Push notifications.
         importScripts: ["push-sw.js"],
       },

@@ -5,6 +5,7 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
+import { EmptyState } from "../components/Art";
 import { ListEditor } from "../components/ListEditor";
 import { Sheet, SheetHeader } from "../components/Sheet";
 import { QuickAdd } from "../components/QuickAdd";
@@ -262,9 +263,13 @@ export function ListView({ id, navigate }: { id: string; navigate: (route: Route
           </section>
         ),
       )}
-      {!visible.length && !list.sections.length && (
-        <p className="empty-note">{completedCount ? "Tout est fait 🎉" : "Aucun rappel"}</p>
-      )}
+      {!visible.length &&
+        !list.sections.length &&
+        (completedCount ? (
+          <EmptyState art="all-done">Tout est fait 🎉</EmptyState>
+        ) : (
+          <EmptyState art="empty-list">Aucun rappel pour l’instant</EmptyState>
+        ))}
     </div>
   );
 }
