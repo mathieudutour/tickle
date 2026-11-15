@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tickle",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    // Hash routes (#liste=…) all load index.html; only /api reaches the Worker.
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"],
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "SPACE", "class_name": "Space" },
+      { "name": "KEYS", "class_name": "Keys" },
+    ],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Space", "Keys"] }],
+  "observability": { "enabled": true },
+}
