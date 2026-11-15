@@ -3,23 +3,27 @@ import { addFromEntry, type EntryDefaults } from "../lib/entry";
 import { parseQuickEntry } from "../lib/parse";
 import { dueLabel, nowLocal, repeatLabel } from "../lib/views";
 import { useStore } from "../store/StoreProvider";
+import { Icon, type IconName } from "./Icon";
 
 /** What quick entry understood, shown under the field as you type. */
 export function EntryPreview({ text }: { text: string }) {
   const now = nowLocal();
   const entry = parseQuickEntry(text, now);
-  const chips = [
-    entry.due && `📅 ${dueLabel(entry, now)}`,
-    entry.repeat && `🔁 ${repeatLabel(entry)}`,
-    entry.priority > 0 && `${"!".repeat(entry.priority)} Priorité`,
-    entry.flagged && "🚩 Drapeau",
-    ...entry.tags.map((t) => `#${t}`),
-  ].filter(Boolean) as string[];
+  const chips: [IconName, string][] = [];
+  if (entry.due) chips.push(["calendar", dueLabel(entry, now)!]);
+  if (entry.repeat) chips.push(["repeat", repeatLabel(entry)!]);
+  if (entry.priority > 0)
+    chips.push(["exclamation", ["", "Faible", "Moyenne", "Élevée"][entry.priority]!]);
+  if (entry.flagged) chips.push(["flag", "Drapeau"]);
+  for (const tag of entry.tags) chips.push(["tag", tag]);
   if (!text.trim() || !chips.length) return null;
   return (
     <span className="preview" aria-live="polite">
-      {chips.map((chip) => (
-        <span key={chip}>{chip}</span>
+      {chips.map(([icon, label]) => (
+        <span key={`${icon}${label}`}>
+          <Icon name={icon} className="inline" />
+          {label}
+        </span>
       ))}
     </span>
   );
@@ -56,7 +60,9 @@ export function QuickAdd({
       >
         <button onClick={() => setOpen(true)}>
           <span className="check" aria-hidden="true">
-            <span className="plus">+</span>
+            <span className="plus">
+              <Icon name="plus" />
+            </span>
           </span>
           {label}
         </button>

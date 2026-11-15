@@ -22,7 +22,8 @@ export type PushState =
   | "on";
 
 const isIos = () =>
-  /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
 const registered = (): Registered | null => {
   try {
@@ -33,17 +34,22 @@ const registered = (): Registered | null => {
   }
 };
 const setRegistered = (value: Registered | null) =>
-  value ? localStorage.setItem(STORAGE_KEY, JSON.stringify(value)) : localStorage.removeItem(STORAGE_KEY);
+  value
+    ? localStorage.setItem(STORAGE_KEY, JSON.stringify(value))
+    : localStorage.removeItem(STORAGE_KEY);
 
 function currentState(): PushState {
-  const supported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  const supported =
+    "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
   if (!supported) return isIos() && !isStandalone() ? "needs-install" : "unsupported";
   if (Notification.permission === "denied") return "denied";
   return Notification.permission === "granted" && registered() ? "on" : "off";
 }
 
 const urlBase64ToBytes = (base64: string) => {
-  const padded = (base64 + "=".repeat((4 - (base64.length % 4)) % 4)).replace(/-/g, "+").replace(/_/g, "/");
+  const padded = (base64 + "=".repeat((4 - (base64.length % 4)) % 4))
+    .replace(/-/g, "+")
+    .replace(/_/g, "/");
   return Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
 };
 
@@ -70,7 +76,9 @@ async function register(key: string, sub: PushSubscription): Promise<void> {
 }
 
 async function unregister(value: Registered) {
-  await fetch(`/api/spaces/${encodeURIComponent(value.key)}/push/${value.id}`, { method: "DELETE" }).catch(() => {});
+  await fetch(`/api/spaces/${encodeURIComponent(value.key)}/push/${value.id}`, {
+    method: "DELETE",
+  }).catch(() => {});
 }
 
 /**
@@ -84,7 +92,8 @@ export function usePush(spaceKey: string | null) {
   // Follow the device to its new space.
   useEffect(() => {
     const current = registered();
-    if (!spaceKey || !current || current.key === spaceKey || Notification.permission !== "granted") return;
+    if (!spaceKey || !current || current.key === spaceKey || Notification.permission !== "granted")
+      return;
     void (async () => {
       await unregister(current);
       setRegistered(null);
@@ -118,7 +127,9 @@ export function usePush(spaceKey: string | null) {
     const current = registered();
     if (current) await unregister(current);
     setRegistered(null);
-    const sub = await navigator.serviceWorker.ready.then((r) => r.pushManager.getSubscription()).catch(() => null);
+    const sub = await navigator.serviceWorker.ready
+      .then((r) => r.pushManager.getSubscription())
+      .catch(() => null);
     await sub?.unsubscribe().catch(() => false);
     setBusy(false);
     setState(currentState());

@@ -3,6 +3,8 @@ import { addFromEntry } from "../lib/entry";
 import { parseQuickEntry } from "../lib/parse";
 import { nowLocal } from "../lib/views";
 import { useStore } from "../store/StoreProvider";
+import { autoGrow } from "../lib/autoGrow";
+import { RowIcon } from "./Icon";
 import { EntryPreview } from "./QuickAdd";
 import { ReminderSheet } from "./ReminderSheet";
 import { Sheet, SheetHeader } from "./Sheet";
@@ -14,7 +16,9 @@ export function NewReminderSheet({ listId, onClose }: { listId?: string; onClose
   const { openSheet, toast } = useUi();
   const lists = [...space.lists].sort((a, b) => a.order - b.order);
   const [text, setText] = useState("");
-  const [list, setList] = useState(listId && space.lists.some((l) => l.id === listId) ? listId : lists[0]!.id);
+  const [list, setList] = useState(
+    listId && space.lists.some((l) => l.id === listId) ? listId : lists[0]!.id,
+  );
   const entry = parseQuickEntry(text, nowLocal());
 
   const add = (details: boolean) => {
@@ -37,11 +41,19 @@ export function NewReminderSheet({ listId, onClose }: { listId?: string; onClose
           add(false);
         }}
       >
-        <SheetHeader id="new-title" title="Nouveau rappel" onClose={onClose} />
-        <input
+        <SheetHeader id="new-title" title="Nouveau rappel" onClose={onClose} closeLabel="Annuler" />
+        <textarea
           className="field title-field"
+          rows={1}
           value={text}
           onChange={(e) => setText(e.target.value)}
+          onInput={(e) => autoGrow(e.currentTarget)}
+          // Enter adds, as in a single-line field; the text only wraps to show it all.
+          onKeyDown={(e) => {
+            if (e.key !== "Enter" || e.shiftKey) return;
+            e.preventDefault();
+            add(false);
+          }}
           placeholder="Ex. : Sortir les poubelles tous les mardis 20h"
           aria-label="Rappel"
           autoFocus
@@ -49,11 +61,13 @@ export function NewReminderSheet({ listId, onClose }: { listId?: string; onClose
         />
         <EntryPreview text={text} />
         <p className="note">
-          Écris la date comme tu la dirais : « demain 18h », « lundi », « le 3 mars », « tous les jours à 8h ». Ajoute
-          #tags, ! à !!! pour la priorité et 🚩.
+          Écris comme tu parles : « demain 18h », « tous les lundis », #tag, !! pour la priorité.
         </p>
         <label className="select-row group">
-          <span>📋 Liste</span>
+          <span className="label">
+            <RowIcon name="list" color={space.lists.find((l) => l.id === list)?.color ?? "blue"} />
+            Liste
+          </span>
           <select value={list} onChange={(e) => setList(e.target.value)}>
             {lists.map((l) => (
               <option key={l.id} value={l.id}>
@@ -65,7 +79,12 @@ export function NewReminderSheet({ listId, onClose }: { listId?: string; onClose
         <button className="cta" disabled={!entry.title}>
           Ajouter
         </button>
-        <button type="button" className="cta ghost" disabled={!entry.title} onClick={() => add(true)}>
+        <button
+          type="button"
+          className="cta ghost"
+          disabled={!entry.title}
+          onClick={() => add(true)}
+        >
           Ajouter et détailler…
         </button>
       </form>

@@ -116,6 +116,7 @@ export function JoinSheet({
           id="join-title"
           title="Rejoindre des listes partagées"
           onClose={() => onDone(false)}
+          closeLabel="Annuler"
         />
         <Art name="sharing" />
         <p>Tu vas partager les listes et les rappels de la personne qui t’a invité·e, en direct.</p>

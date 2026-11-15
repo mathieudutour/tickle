@@ -1,17 +1,13 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type PointerEvent as ReactPointerEvent,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { EmptyState } from "../components/Art";
+import { Icon, RowIcon } from "../components/Icon";
 import { ListEditor } from "../components/ListEditor";
 import { Sheet, SheetHeader } from "../components/Sheet";
 import { QuickAdd } from "../components/QuickAdd";
 import { ReminderRow } from "../components/ReminderRow";
 import { useUi } from "../components/UiProvider";
 import type { Route } from "../lib/router";
+import { useDrag, type DropTarget } from "../lib/useDrag";
 import { useLinger } from "../lib/useLinger";
 import { listReminders, newId, orderBetween } from "../lib/views";
 import type { Reminder } from "../shared/space";
@@ -50,8 +46,6 @@ function useShowCompleted(listId: string): [boolean, (show: boolean) => void] {
   ];
 }
 
-type DropTarget = { id: string; after: boolean } | { section: string };
-
 /** One list, with its sections: reminders are reordered and moved between sections by dragging their handle. */
 export function ListView({ id, navigate }: { id: string; navigate: (route: Route) => void }) {
   const { space, dispatch } = useStore();
@@ -59,8 +53,6 @@ export function ListView({ id, navigate }: { id: string; navigate: (route: Route
   const list = space.lists.find((l) => l.id === id);
   const [showCompleted, setShowCompleted] = useShowCompleted(id);
   const [lingering, linger] = useLinger();
-  const [dragging, setDragging] = useState<string | null>(null);
-  const target = useRef<DropTarget | null>(null);
   const container = useRef<HTMLDivElement>(null);
 
   const all = list ? listReminders(space, list.id, true) : [];
@@ -80,19 +72,6 @@ export function ListView({ id, navigate }: { id: string; navigate: (route: Route
   }));
 
   // ---------- Dragging ----------
-  const markTarget = (next: DropTarget | null) => {
-    container.current
-      ?.querySelectorAll("[data-drop]")
-      .forEach((el) => el.removeAttribute("data-drop"));
-    target.current = next;
-    if (!next) return;
-    const el =
-      "id" in next
-        ? container.current?.querySelector(`[data-id="${next.id}"]`)
-        : container.current?.querySelector(`[data-section="${next.section}"]`);
-    el?.setAttribute("data-drop", "id" in next ? (next.after ? "after" : "before") : "into");
-  };
-
   const drop = useCallback(
     (draggedId: string, to: DropTarget) => {
       const dragged = space.reminders[draggedId];
@@ -122,34 +101,7 @@ export function ListView({ id, navigate }: { id: string; navigate: (route: Route
     [space, groups, dispatch],
   );
 
-  const startDrag = (event: ReactPointerEvent, draggedId: string) => {
-    event.preventDefault();
-    setDragging(draggedId);
-    const move = (e: PointerEvent) => {
-      const el = document.elementFromPoint(e.clientX, e.clientY);
-      const row = el?.closest<HTMLElement>("[data-id]");
-      const header = el?.closest<HTMLElement>("[data-section]");
-      if (row && container.current?.contains(row) && row.dataset.id !== draggedId) {
-        const box = row.getBoundingClientRect();
-        markTarget({ id: row.dataset.id!, after: e.clientY > box.top + box.height / 2 });
-      } else if (header && container.current?.contains(header))
-        markTarget({ section: header.dataset.section! });
-      // Scroll when dragging near the top or bottom of the screen.
-      if (e.clientY < 80) scrollBy(0, -12);
-      else if (e.clientY > innerHeight - 80) scrollBy(0, 12);
-    };
-    const end = () => {
-      removeEventListener("pointermove", move);
-      removeEventListener("pointerup", end);
-      removeEventListener("pointercancel", end);
-      if (target.current) drop(draggedId, target.current);
-      markTarget(null);
-      setDragging(null);
-    };
-    addEventListener("pointermove", move);
-    addEventListener("pointerup", end);
-    addEventListener("pointercancel", end);
-  };
+  const { dragging, start: startDrag } = useDrag(container, drop);
 
   if (!list) {
     return (
@@ -170,7 +122,8 @@ export function ListView({ id, navigate }: { id: string; navigate: (route: Route
         <div className="in menu">
           <SheetHeader id="menu-title" title={list.name} onClose={close} />
           <button className="menu-item" onClick={edit}>
-            ✏️ Modifier la liste…
+            <RowIcon name="pencil" color={list.color} />
+            Modifier la liste…
           </button>
           <button
             className="menu-item"
@@ -183,7 +136,8 @@ export function ListView({ id, navigate }: { id: string; navigate: (route: Route
               });
             }}
           >
-            ▤ Ajouter une section
+            <RowIcon name="section" color={list.color} />
+            Ajouter une section
           </button>
           <button
             className="menu-item"
@@ -192,6 +146,7 @@ export function ListView({ id, navigate }: { id: string; navigate: (route: Route
               setShowCompleted(!showCompleted);
             }}
           >
+            <RowIcon name={showCompleted ? "eyeSlash" : "eye"} color={list.color} />
             {showCompleted ? "Masquer les terminés" : "Afficher les terminés"}
           </button>
         </div>
@@ -206,7 +161,7 @@ export function ListView({ id, navigate }: { id: string; navigate: (route: Route
     >
       <Header
         back={() => navigate({ name: "home" })}
-        title={`${list.icon} ${list.name}`}
+        title={list.name}
         accent
         actions={
           <button
@@ -215,7 +170,7 @@ export function ListView({ id, navigate }: { id: string; navigate: (route: Route
             aria-label="Options de la liste"
             title="Options de la liste"
           >
-            ⋯
+            <Icon name="ellipsis" />
           </button>
         }
       />

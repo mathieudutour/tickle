@@ -1,46 +1,54 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { EmptyState } from "../components/Art";
+import { Icon } from "../components/Icon";
 import { ListEditor } from "../components/ListEditor";
 import { NewReminderSheet } from "../components/NewReminderSheet";
 import { ReminderRow } from "../components/ReminderRow";
+import { statusLabel } from "../components/Sharing";
 import { useUi } from "../components/UiProvider";
 import { hrefOf, type Route } from "../lib/router";
+import { useDrag } from "../lib/useDrag";
 import { openCount, search, tagsOf } from "../lib/views";
 import { useStore } from "../store/StoreProvider";
+import { Header } from "./Header";
 
-/** The lists screen: search, « Mes listes » and tags. */
+/** The lists screen: search, « Mes listes » and tags. In edit mode, lists are reordered by their handle. */
 export function Home({ navigate }: { navigate: (route: Route) => void }) {
   const { space, status, dispatch } = useStore();
   const { openSheet } = useUi();
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState(false);
+  const container = useRef<HTMLUListElement>(null);
   const lists = [...space.lists].sort((a, b) => a.order - b.order);
   const tags = tagsOf(space);
   const results = query.trim() ? search(space, query) : null;
 
-  const move = (index: number, by: number) => {
-    const ids = lists.map((l) => l.id);
-    const [id] = ids.splice(index, 1);
-    ids.splice(index + by, 0, id!);
+  const { dragging, start } = useDrag(container, (draggedId, target) => {
+    if (!("id" in target)) return;
+    const ids = lists.map((l) => l.id).filter((id) => id !== draggedId);
+    ids.splice(ids.indexOf(target.id) + (target.after ? 1 : 0), 0, draggedId);
     dispatch({ type: "reorderLists", ids });
-  };
+  });
 
   return (
-    <div className="home">
-      <header className="screen-head">
-        <div className="bar">
-          <a
-            className="icon-button"
-            href={hrefOf({ name: "settings" })}
-            aria-label="Réglages et partage"
-          >
-            <span className={`dot ${status.connection}`} aria-hidden="true" />
-            ⚙︎
-          </a>
-          <button className="link-button" onClick={() => setEditing(!editing)}>
-            {editing ? "OK" : "Modifier"}
-          </button>
-        </div>
+    <div className={`home${dragging ? " dragging" : ""}`}>
+      <Header
+        actions={
+          <>
+            <a
+              className="icon-button"
+              href={hrefOf({ name: "settings" })}
+              aria-label="Réglages et partage"
+              title="Réglages et partage"
+            >
+              <Icon name="gear" />
+            </a>
+            <button className="link-button" onClick={() => setEditing(!editing)}>
+              {editing ? "OK" : "Modifier"}
+            </button>
+          </>
+        }
+      >
         <input
           className="search"
           type="search"
@@ -50,7 +58,13 @@ export function Home({ navigate }: { navigate: (route: Route) => void }) {
           aria-label="Rechercher dans les rappels"
           enterKeyHint="search"
         />
-      </header>
+        {/* Sync is silent while it works; this only shows when changes can't reach the others. */}
+        {status.connection === "offline" && status.joined && (
+          <p className="sync-pill" role="status">
+            {statusLabel(status)}
+          </p>
+        )}
+      </Header>
 
       {results ? (
         <section className="group-list">
@@ -66,52 +80,46 @@ export function Home({ navigate }: { navigate: (route: Route) => void }) {
       ) : (
         <>
           <h2 className="home-title">Mes listes</h2>
-          <ul className="lists card">
-            {lists.map((list, index) => (
+          <ul className="lists card" ref={container}>
+            {lists.map((list) => (
               <li
                 key={list.id}
+                data-id={list.id}
                 style={{ "--accent": `var(--c-${list.color})` } as React.CSSProperties}
               >
-                <a href={hrefOf({ name: "list", id: list.id })} className="list-row">
-                  <span className="list-badge" aria-hidden="true">
-                    {list.icon}
-                  </span>
-                  <span className="name">{list.name}</span>
-                  {!editing && <span className="count">{openCount(space, list.id)}</span>}
-                  {!editing && (
-                    <span className="chev" aria-hidden="true">
-                      ›
+                {editing ? (
+                  <div className="list-row">
+                    <span className="list-badge" aria-hidden="true">
+                      {list.icon}
                     </span>
-                  )}
-                </a>
-                {editing && (
-                  <span className="reorder">
+                    <span className="name">{list.name}</span>
                     <button
-                      className="icon-button"
-                      disabled={index === 0}
-                      onClick={() => move(index, -1)}
-                      aria-label={`Monter ${list.name}`}
-                    >
-                      ↑
-                    </button>
-                    <button
-                      className="icon-button"
-                      disabled={index === lists.length - 1}
-                      onClick={() => move(index, 1)}
-                      aria-label={`Descendre ${list.name}`}
-                    >
-                      ↓
-                    </button>
-                    <button
-                      className="icon-button"
+                      className="icon-button info"
                       onClick={() =>
                         openSheet((close) => <ListEditor listId={list.id} onClose={close} />)
                       }
                       aria-label={`Modifier ${list.name}`}
                     >
-                      ⓘ
+                      <Icon name="info" />
                     </button>
-                  </span>
+                    <span
+                      className="handle"
+                      aria-hidden="true"
+                      onPointerDown={(e) => start(e, list.id)}
+                      title="Glisser pour déplacer"
+                    >
+                      <Icon name="grip" />
+                    </span>
+                  </div>
+                ) : (
+                  <a href={hrefOf({ name: "list", id: list.id })} className="list-row">
+                    <span className="list-badge" aria-hidden="true">
+                      {list.icon}
+                    </span>
+                    <span className="name">{list.name}</span>
+                    <span className="count">{openCount(space, list.id)}</span>
+                    <Icon name="chevronRight" className="chev" />
+                  </a>
                 )}
               </li>
             ))}
@@ -138,7 +146,7 @@ export function Home({ navigate }: { navigate: (route: Route) => void }) {
           onClick={() => openSheet((close) => <NewReminderSheet onClose={close} />)}
         >
           <span className="plus" aria-hidden="true">
-            +
+            <Icon name="plus" />
           </span>
           Nouveau rappel
         </button>

@@ -10,6 +10,7 @@ import {
 } from "../lib/views";
 import type { Reminder } from "../shared/space";
 import { useStore } from "../store/StoreProvider";
+import { Icon } from "./Icon";
 import { ReminderSheet } from "./ReminderSheet";
 import { useUi } from "./UiProvider";
 
@@ -54,25 +55,38 @@ export function ReminderRow({
     if (completed) {
       onCompleted?.(reminder.id);
       if (reminder.repeat && reminder.due)
-        toast(`🔁 ${reminder.title} : prochaine fois ${repeat?.toLowerCase() ?? ""}`);
+        toast(`${reminder.title} : prochaine fois ${repeat?.toLowerCase() ?? ""}`);
     }
   };
 
-  const details = [
-    showList && list ? <span key="list">{list.name}</span> : null,
-    due ? (
-      <span key="due" className={overdue ? "overdue" : undefined}>
-        {due}
+  // « Courses · Demain, 9 h · ↻ Toutes les semaines #maison »: parts separated by dots, then the tags.
+  const parts = [
+    showList && list ? (
+      <span key="list" className="part">
+        {list.name}
       </span>
     ) : null,
-    repeat ? <span key="repeat">🔁 {repeat}</span> : null,
-    reminder.early ? <span key="early">⏰</span> : null,
+    due ? (
+      <span key="due" className={`part${overdue ? " overdue" : ""}`}>
+        {due}
+        {reminder.early ? <Icon name="bell" className="inline" /> : null}
+      </span>
+    ) : null,
+    repeat ? (
+      <span key="repeat" className="part">
+        <Icon name="repeat" className="inline" />
+        {repeat}
+      </span>
+    ) : null,
+  ].filter(Boolean);
+  const details = [
+    ...parts,
     ...reminder.tags.map((tag) => (
       <span key={`#${tag}`} className="tag">
         #{tag}
       </span>
     )),
-  ].filter(Boolean);
+  ];
 
   return (
     <>
@@ -113,8 +127,8 @@ export function ReminderRow({
           )}
         </button>
         {reminder.flagged && (
-          <span className="flag" aria-label="Avec drapeau">
-            🚩
+          <span className="flag" role="img" aria-label="Avec drapeau">
+            <Icon name="flag" />
           </span>
         )}
         {children.length > 0 && (
@@ -124,7 +138,7 @@ export function ReminderRow({
             aria-expanded={expanded}
             aria-label={`${openChildren} sous-tâche${openChildren > 1 ? "s" : ""}`}
           >
-            {openChildren || "✓"} <span aria-hidden="true">›</span>
+            {openChildren || "✓"} <Icon name="chevronRight" />
           </button>
         )}
         {onDragStart && (
@@ -134,7 +148,7 @@ export function ReminderRow({
             onPointerDown={(event) => onDragStart(event, reminder.id)}
             title="Glisser pour déplacer"
           >
-            ≡
+            <Icon name="grip" />
           </span>
         )}
       </li>

@@ -9,6 +9,8 @@ describe("parseQuickEntry", () => {
   it.each([
     ["Appeler maman demain 18h", "Appeler maman", { date: "2026-11-16", time: "18:00" }],
     ["Pain aujourd’hui", "Pain", { date: "2026-11-15" }],
+    ["Payer la cantine hier", "Payer la cantine", { date: "2026-11-14" }],
+    ["Renvoyer le colis avant-hier", "Renvoyer le colis", { date: "2026-11-13" }],
     ["Dentiste après-demain à 9h30", "Dentiste", { date: "2026-11-17", time: "09:30" }],
     ["Rendre le livre lundi", "Rendre le livre", { date: "2026-11-16" }],
     ["Rendre le livre lundi prochain", "Rendre le livre", { date: "2026-11-23" }],
@@ -63,7 +65,12 @@ describe("parseQuickEntry", () => {
   });
 
   it("leaves titles without dates alone", () => {
-    expect(parse("Lire 1984")).toEqual({ title: "Lire 1984", priority: 0, flagged: false, tags: [] });
+    expect(parse("Lire 1984")).toEqual({
+      title: "Lire 1984",
+      priority: 0,
+      flagged: false,
+      tags: [],
+    });
     expect(parse("Midi-Pyrénées guide")).toMatchObject({ title: "Midi-Pyrénées guide" });
     expect(parse("Demander à Jean")).toMatchObject({ title: "Demander à Jean" });
   });

@@ -5,7 +5,10 @@ import { useStore } from "../store/StoreProvider";
 import { Sheet, SheetHeader } from "./Sheet";
 import { useUi } from "./UiProvider";
 
-const ICONS = "📋 ✅ 🛒 🏠 💼 🎓 💊 🏃 🍽️ 🎁 ✈️ 🚗 💡 📚 🎵 🎮 🐶 🌱 🧹 🔧 💰 ❤️ ⭐ 🎉 👶 📞 🖥️ 📦 🧺 🏖️".split(" ");
+const ICONS =
+  "📋 ✅ 🛒 🏠 💼 🎓 💊 🏃 🍽️ 🎁 ✈️ 🚗 💡 📚 🎵 🎮 🐶 🌱 🧹 🔧 💰 ❤️ ⭐ 🎉 👶 📞 🖥️ 📦 🧺 🏖️".split(
+    " ",
+  );
 
 export const COLOR_NAMES: Record<Color, string> = {
   red: "Rouge",
@@ -41,7 +44,9 @@ export function ListEditor({
   const [icon, setIcon] = useState(existing?.icon ?? "📋");
   const [section, setSection] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const count = existing ? Object.values(space.reminders).filter((r) => r.listId === existing.id).length : 0;
+  const count = existing
+    ? Object.values(space.reminders).filter((r) => r.listId === existing.id).length
+    : 0;
 
   const save = () => {
     const trimmed = name.trim();
@@ -75,7 +80,12 @@ export function ListEditor({
         }}
         style={{ "--accent": `var(--c-${color})` } as React.CSSProperties}
       >
-        <SheetHeader id="list-title" title={existing ? "Modifier la liste" : "Nouvelle liste"} onClose={onClose} />
+        <SheetHeader
+          id="list-title"
+          title={existing ? "Modifier la liste" : "Nouvelle liste"}
+          onClose={onClose}
+          closeLabel="Annuler"
+        />
         <div className="list-badge big" aria-hidden="true">
           {icon}
         </div>
@@ -129,7 +139,12 @@ export function ListEditor({
                   onBlur={(e) =>
                     e.target.value.trim() &&
                     e.target.value.trim() !== s.name &&
-                    dispatch({ type: "renameSection", listId: existing.id, id: s.id, name: e.target.value.trim() })
+                    dispatch({
+                      type: "renameSection",
+                      listId: existing.id,
+                      id: s.id,
+                      name: e.target.value.trim(),
+                    })
                   }
                   aria-label={`Nom de la section ${s.name}`}
                 />

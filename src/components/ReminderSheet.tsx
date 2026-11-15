@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
+import { autoGrow } from "../lib/autoGrow";
 import { addDays, weekday } from "../lib/dates";
 import { nowLocal, repeatLabel, subtasks } from "../lib/views";
 import type { Priority, Reminder, ReminderPatch, Repeat } from "../shared/space";
 import { useStore } from "../store/StoreProvider";
 import { QuickAdd } from "./QuickAdd";
 import { ReminderRow } from "./ReminderRow";
+import { RowIcon } from "./Icon";
 import { Sheet, SheetHeader } from "./Sheet";
 import { useUi } from "./UiProvider";
 
@@ -109,7 +111,9 @@ export function ReminderSheet({ id, onClose }: { id: string; onClose: () => void
             className="field title-field"
             defaultValue={reminder.title}
             key={`t${reminder.id}`}
-            onChange={(e) => e.target.value.trim() && (pending.current.title = e.target.value.trim())}
+            onChange={(e) =>
+              e.target.value.trim() && (pending.current.title = e.target.value.trim())
+            }
             onBlur={flush}
             aria-label="Titre"
           />
@@ -120,7 +124,9 @@ export function ReminderSheet({ id, onClose }: { id: string; onClose: () => void
             onChange={(e) => (pending.current.notes = e.target.value || null)}
             onBlur={flush}
             placeholder="Notes"
-            rows={2}
+            rows={1}
+            ref={autoGrow}
+            onInput={(e) => autoGrow(e.currentTarget)}
           />
           <input
             className="field"
@@ -136,7 +142,10 @@ export function ReminderSheet({ id, onClose }: { id: string; onClose: () => void
 
         <div className="group">
           <label className="switch-row">
-            <span>📅 Date</span>
+            <span className="label">
+              <RowIcon name="calendar" color="red" />
+              Date
+            </span>
             <input
               type="checkbox"
               role="switch"
@@ -165,13 +174,21 @@ export function ReminderSheet({ id, onClose }: { id: string; onClose: () => void
                 aria-label="Date"
               />
               <label className="switch-row">
-                <span>🕒 Heure</span>
+                <span className="label">
+                  <RowIcon name="clock" color="blue" />
+                  Heure
+                </span>
                 <input
                   type="checkbox"
                   role="switch"
                   checked={!!reminder.due.time}
                   onChange={(e) =>
-                    update({ due: { date: reminder.due!.date, ...(e.target.checked ? { time: "09:00" } : {}) } })
+                    update({
+                      due: {
+                        date: reminder.due!.date,
+                        ...(e.target.checked ? { time: "09:00" } : {}),
+                      },
+                    })
                   }
                 />
               </label>
@@ -181,14 +198,21 @@ export function ReminderSheet({ id, onClose }: { id: string; onClose: () => void
                   type="time"
                   value={reminder.due.time}
                   onChange={(e) =>
-                    e.target.value && update({ due: { date: reminder.due!.date, time: e.target.value } })
+                    e.target.value &&
+                    update({ due: { date: reminder.due!.date, time: e.target.value } })
                   }
                   aria-label="Heure"
                 />
               )}
               <label className="select-row">
-                <span>⏰ Alerte anticipée</span>
-                <select value={reminder.early ?? 0} onChange={(e) => update({ early: Number(e.target.value) || null })}>
+                <span className="label">
+                  <RowIcon name="bell" color="purple" />
+                  Alerte anticipée
+                </span>
+                <select
+                  value={reminder.early ?? 0}
+                  onChange={(e) => update({ early: Number(e.target.value) || null })}
+                >
                   {EARLY.map(([value, label]) => (
                     <option key={value} value={value}>
                       {label}
@@ -197,7 +221,10 @@ export function ReminderSheet({ id, onClose }: { id: string; onClose: () => void
                 </select>
               </label>
               <label className="select-row">
-                <span>🔁 Répéter</span>
+                <span className="label">
+                  <RowIcon name="repeat" color="gray" />
+                  Répéter
+                </span>
                 <select
                   value={repeatValue(reminder.repeat)}
                   onChange={(e) => {
@@ -222,14 +249,16 @@ export function ReminderSheet({ id, onClose }: { id: string; onClose: () => void
               </label>
               {reminder.repeat && (
                 <label className="select-row">
-                  <span>Fin de la répétition</span>
+                  <span className="label indent">Fin de la répétition</span>
                   <input
                     type="date"
                     value={reminder.repeat.until ?? ""}
                     min={reminder.due.date}
                     onChange={(e) => {
                       const { until: _, ...rest } = reminder.repeat!;
-                      update({ repeat: e.target.value ? { ...rest, until: e.target.value } : rest });
+                      update({
+                        repeat: e.target.value ? { ...rest, until: e.target.value } : rest,
+                      });
                     }}
                     aria-label="Fin de la répétition"
                   />
@@ -241,7 +270,10 @@ export function ReminderSheet({ id, onClose }: { id: string; onClose: () => void
 
         <div className="group">
           <label className="switch-row">
-            <span>🚩 Drapeau</span>
+            <span className="label">
+              <RowIcon name="flag" color="orange" />
+              Drapeau
+            </span>
             <input
               type="checkbox"
               role="switch"
@@ -250,7 +282,10 @@ export function ReminderSheet({ id, onClose }: { id: string; onClose: () => void
             />
           </label>
           <label className="select-row">
-            <span>❗ Priorité</span>
+            <span className="label">
+              <RowIcon name="exclamation" color="red" />
+              Priorité
+            </span>
             <select
               value={reminder.priority}
               onChange={(e) => update({ priority: Number(e.target.value) as Priority })}
@@ -264,8 +299,14 @@ export function ReminderSheet({ id, onClose }: { id: string; onClose: () => void
           </label>
           {!parent && (
             <label className="select-row">
-              <span>📋 Liste</span>
-              <select value={reminder.listId} onChange={(e) => update({ listId: e.target.value, sectionId: null })}>
+              <span className="label">
+                <RowIcon name="list" color={list?.color ?? "blue"} />
+                Liste
+              </span>
+              <select
+                value={reminder.listId}
+                onChange={(e) => update({ listId: e.target.value, sectionId: null })}
+              >
                 {[...space.lists]
                   .sort((a, b) => a.order - b.order)
                   .map((l) => (
@@ -278,8 +319,14 @@ export function ReminderSheet({ id, onClose }: { id: string; onClose: () => void
           )}
           {!parent && list && list.sections.length > 0 && (
             <label className="select-row">
-              <span>Section</span>
-              <select value={reminder.sectionId ?? ""} onChange={(e) => update({ sectionId: e.target.value || null })}>
+              <span className="label">
+                <RowIcon name="section" color="gray" />
+                Section
+              </span>
+              <select
+                value={reminder.sectionId ?? ""}
+                onChange={(e) => update({ sectionId: e.target.value || null })}
+              >
                 <option value="">Aucune</option>
                 {list.sections.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -293,7 +340,10 @@ export function ReminderSheet({ id, onClose }: { id: string; onClose: () => void
 
         <div className="group">
           <div className="tags-row">
-            <span>#️⃣ Tags</span>
+            <span className="label">
+              <RowIcon name="tag" color="gray" />
+              Tags
+            </span>
             {reminder.tags.map((t) => (
               <button
                 key={t}
@@ -328,7 +378,10 @@ export function ReminderSheet({ id, onClose }: { id: string; onClose: () => void
               {children.map((child) => (
                 <ReminderRow key={child.id} reminder={child} showCompleted />
               ))}
-              <QuickAdd defaults={{ listId: reminder.listId, parentId: reminder.id }} label="Ajouter une sous-tâche" />
+              <QuickAdd
+                defaults={{ listId: reminder.listId, parentId: reminder.id }}
+                label="Ajouter une sous-tâche"
+              />
             </ul>
           </div>
         )}

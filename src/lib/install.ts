@@ -30,7 +30,8 @@ export const isStandalone = () =>
 
 /** iPhones and iPads (which report themselves as Macs with touch). */
 const isIos = () =>
-  /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
 export type InstallMethod = "prompt" | "ios" | "menu";
 

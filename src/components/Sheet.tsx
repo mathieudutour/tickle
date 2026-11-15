@@ -19,19 +19,45 @@ export function Sheet({ onClose, labelledBy, children }: Props) {
 
   return (
     <div className="sheet-bg" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div ref={dialog} className="sheet" tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={labelledBy}>
+      <div
+        ref={dialog}
+        className="sheet"
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={labelledBy}
+        // A hairline under the header once content scrolls beneath it.
+        onScroll={(e) =>
+          e.currentTarget.toggleAttribute("data-scrolled", e.currentTarget.scrollTop > 4)
+        }
+      >
         {children}
       </div>
     </div>
   );
 }
 
-export function SheetHeader({ id, title, onClose }: { id: string; title: string; onClose: () => void }) {
+/** The sheet's title, with « OK » to close (or « Annuler » for a sheet that creates something). */
+export function SheetHeader({
+  id,
+  title,
+  onClose,
+  closeLabel = "OK",
+}: {
+  id: string;
+  title: string;
+  onClose: () => void;
+  closeLabel?: string;
+}) {
   return (
     <div className="sheet-head">
       <h2 id={id}>{title}</h2>
-      <button className="x" onClick={onClose} aria-label="Fermer">
-        ✕
+      <button
+        type="button"
+        className={`sheet-close${closeLabel === "OK" ? " strong" : ""}`}
+        onClick={onClose}
+      >
+        {closeLabel}
       </button>
     </div>
   );

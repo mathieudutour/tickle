@@ -24,6 +24,10 @@
   --c-brown: #a2845e;
   --c-gray: #8e8e93;
   --accent: var(--c-blue);
+  /* Sheets sit above the page: in dark mode they are lifted to grey, as on iOS. */
+  --sheet-bg: #f2f2f7;
+  --sheet-card: #fff;
+  --sheet-fill: #e9e9ee;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --radius: 12px;
 }
@@ -53,6 +57,9 @@
     --c-pink: #ff375f;
     --c-brown: #ac8e68;
     --c-gray: #98989d;
+    --sheet-bg: #1c1c1e;
+    --sheet-card: #2c2c2e;
+    --sheet-fill: #3a3a3c;
   }
 }
 
@@ -117,34 +124,98 @@ h3 {
   margin: 0;
 }
 
-/* ---------- Screen header ---------- */
+/* ---------- Top bar ---------- */
 
-.screen-head {
-  padding-top: 8px;
+.icon {
+  width: 1.15em;
+  height: 1.15em;
+  flex: none;
 }
 
-.screen-head .bar {
-  display: flex;
-  justify-content: space-between;
+.icon.inline {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.15em;
+  margin-right: 3px;
+}
+
+/* Sticky, as on iOS; translucent with a hairline and a small title once the large title has scrolled under it. */
+.top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   min-height: 44px;
+  margin: 0 -16px;
+  padding: 0 8px;
+  border-bottom: 0.5px solid transparent;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
 }
 
-.screen-head .actions {
+.top-bar.scrolled {
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom-color: var(--line);
+}
+
+.top-bar .side {
   display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.top-bar .side.end {
+  justify-content: flex-end;
   gap: 4px;
 }
 
-.screen-head h1 {
+.small-title {
+  font-weight: 600;
+  max-width: 50vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.top-bar.scrolled .small-title {
+  opacity: 1;
+}
+
+.large-title {
   font-size: 34px;
   font-weight: 700;
   letter-spacing: -0.02em;
-  margin: 4px 0 12px;
+  margin: 2px 0 12px;
   overflow-wrap: anywhere;
 }
 
-.screen-head h1.accent {
+.large-title.accent {
   color: var(--accent);
+}
+
+.sentinel {
+  height: 1px;
+  margin-top: -1px;
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: 8px;
+}
+
+.back .icon {
+  width: 22px;
+  height: 22px;
+  stroke-width: 2.4;
 }
 
 .back,
@@ -167,22 +238,11 @@ h3 {
   min-height: 44px;
   font-size: 22px;
   color: var(--link);
-  gap: 4px;
 }
 
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--c-gray);
-}
-
-.dot.online {
-  background: var(--c-green);
-}
-
-.dot.connecting {
-  background: var(--c-orange);
+.top-bar .link-button {
+  padding: 0 8px;
+  min-height: 44px;
 }
 
 .search {
@@ -192,7 +252,7 @@ h3 {
   background: var(--fill);
   padding: 9px 12px 9px 34px;
   font-size: 17px;
-  margin-bottom: 16px;
+  margin: 4px 0 16px;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%238e8e93' stroke-width='2'%3E%3Ccircle cx='7' cy='7' r='5.5'/%3E%3Cpath d='m11 11 4 4'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: 11px center;
@@ -200,6 +260,15 @@ h3 {
 
 .search::placeholder {
   color: var(--faint);
+}
+
+.sync-pill {
+  display: inline-block;
+  margin: -6px 0 16px;
+  padding: 4px 12px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--c-orange) 18%, transparent);
+  font-size: 14px;
 }
 
 /* ---------- Home ---------- */
@@ -211,7 +280,7 @@ h3 {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: var(--accent);
+  background: color-mix(in srgb, var(--accent) 24%, var(--card));
   font-size: 17px;
   flex: none;
 }
@@ -221,7 +290,7 @@ h3 {
   height: 88px;
   font-size: 44px;
   margin: 4px auto 12px;
-  box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 40%, transparent);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .home-title {
@@ -287,11 +356,14 @@ h3 {
 
 .chev {
   color: var(--faint);
-  font-size: 22px;
+  width: 16px;
+  height: 16px;
+  stroke-width: 2.5;
 }
 
-.reorder {
-  display: flex;
+.list-row .info {
+  min-width: 36px;
+  font-size: 20px;
 }
 
 .chips {
@@ -355,8 +427,12 @@ h3 {
   border-radius: 50%;
   background: var(--link);
   color: var(--card);
-  font-weight: 700;
-  line-height: 1;
+}
+
+.plus .icon {
+  width: 16px;
+  height: 16px;
+  stroke-width: 3;
 }
 
 /* ---------- Reminders ---------- */
@@ -471,6 +547,12 @@ h3 {
   font-size: 15px;
 }
 
+.meta .part + .part::before {
+  content: "·";
+  margin-right: 8px;
+  color: var(--faint);
+}
+
 .meta .overdue {
   color: var(--danger);
 }
@@ -484,7 +566,8 @@ h3 {
   display: flex;
   align-items: center;
   padding-right: 4px;
-  font-size: 15px;
+  font-size: 17px;
+  color: var(--c-orange);
 }
 
 .expand {
@@ -495,12 +578,21 @@ h3 {
   min-width: 44px;
 }
 
-.expand span {
-  display: inline-block;
+.expand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.expand .icon {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.5;
   transition: transform 0.15s;
 }
 
-.expand.on span {
+.expand.on .icon {
   transform: rotate(90deg);
 }
 
@@ -516,6 +608,25 @@ h3 {
   touch-action: none;
   cursor: grab;
   user-select: none;
+  opacity: 0.45;
+  transition: opacity 0.15s;
+}
+
+/* With a mouse, handles appear on the row under the pointer; on touch they stay, quietly. */
+@media (hover: hover) {
+  .handle {
+    opacity: 0;
+  }
+
+  li:hover > .handle,
+  li:hover .handle,
+  .handle:focus-visible {
+    opacity: 1;
+  }
+}
+
+.lists .handle {
+  opacity: 1;
 }
 
 .dragging,
@@ -568,7 +679,12 @@ h3 {
   border: 1.5px solid currentColor;
   width: 22px;
   height: 22px;
-  font-weight: 400;
+}
+
+.quick-add.closed .plus .icon {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2;
 }
 
 .quick-add .check i {
@@ -583,6 +699,8 @@ h3 {
 }
 
 .preview span {
+  display: inline-flex;
+  align-items: center;
   background: color-mix(in srgb, var(--accent) 15%, transparent);
   color: var(--ink);
   border-radius: 6px;
@@ -678,6 +796,10 @@ h3 {
   max-height: 92dvh;
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* Everything inside picks up the sheet's surfaces through the usual variables. */
+  --bg: var(--sheet-bg);
+  --card: var(--sheet-card);
+  --fill: var(--sheet-fill);
   background: var(--bg);
   border-radius: 14px 14px 0 0;
   padding-bottom: env(safe-area-inset-bottom);
@@ -726,6 +848,12 @@ h3 {
   margin: -8px -16px 0;
   padding: 8px 8px 8px 16px;
   background: var(--bg);
+  border-bottom: 0.5px solid transparent;
+  transition: border-color 0.2s;
+}
+
+.sheet[data-scrolled] .sheet-head {
+  border-bottom-color: var(--line);
 }
 
 .sheet-head h2 {
@@ -733,6 +861,18 @@ h3 {
   font-weight: 600;
 }
 
+.sheet-close {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 8px;
+  color: var(--link);
+}
+
+.sheet-close.strong {
+  font-weight: 600;
+}
+
+/* For the small ✕ buttons left in rows (sections). */
 .x {
   min-width: 44px;
   min-height: 44px;
@@ -818,6 +958,33 @@ h3 {
   font-size: 17px;
 }
 
+.label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.label.indent {
+  padding-left: 42px;
+}
+
+.row-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  color: #fff;
+  flex: none;
+}
+
+.row-icon .icon {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2.2;
+}
+
 .select-row.group {
   flex-direction: row;
   padding: 4px 16px;
@@ -882,10 +1049,13 @@ input[role="switch"]:checked::after {
 }
 
 .menu .menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   background: var(--card);
   border-radius: var(--radius);
   min-height: 52px;
-  padding: 0 16px;
+  padding: 0 12px;
   text-align: left;
 }
 
