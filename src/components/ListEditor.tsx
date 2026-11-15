@@ -95,7 +95,7 @@ export function ListEditor({
           onChange={(e) => setName(e.target.value)}
           placeholder="Nom de la liste"
           aria-label="Nom de la liste"
-          autoFocus={!existing}
+          data-autofocus={existing ? undefined : ""}
           maxLength={60}
         />
 

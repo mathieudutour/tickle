@@ -56,7 +56,7 @@ export function NewReminderSheet({ listId, onClose }: { listId?: string; onClose
           }}
           placeholder="Ex. : Sortir les poubelles tous les mardis 20h"
           aria-label="Rappel"
-          autoFocus
+          data-autofocus
           enterKeyHint="done"
         />
         <EntryPreview text={text} />

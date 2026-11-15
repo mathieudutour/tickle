@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { autoGrow } from "../lib/autoGrow";
-import { addDays, weekday } from "../lib/dates";
+import { dayLabel, timeLabel } from "../lib/dates";
 import { nowLocal, repeatLabel, subtasks } from "../lib/views";
 import type { Priority, Reminder, ReminderPatch, Repeat } from "../shared/space";
 import { useStore } from "../store/StoreProvider";
 import { QuickAdd } from "./QuickAdd";
 import { ReminderRow } from "./ReminderRow";
-import { RowIcon } from "./Icon";
+import { RowIcon, type IconName } from "./Icon";
 import { Sheet, SheetHeader } from "./Sheet";
 import { useUi } from "./UiProvider";
 
@@ -24,13 +24,13 @@ const REPEATS: [string, string][] = [
 ];
 
 const EARLY: [number, string][] = [
-  [0, "Aucune"],
-  [5, "5 minutes avant"],
-  [15, "15 minutes avant"],
-  [30, "30 minutes avant"],
-  [60, "1 heure avant"],
-  [120, "2 heures avant"],
-  [1440, "1 jour avant"],
+  [0, "À l’heure"],
+  [5, "5 min avant"],
+  [15, "15 min avant"],
+  [30, "30 min avant"],
+  [60, "1 h avant"],
+  [120, "2 h avant"],
+  [1440, "La veille"],
   [2880, "2 jours avant"],
   [10080, "1 semaine avant"],
 ];
@@ -77,12 +77,6 @@ export function ReminderSheet({ id, onClose }: { id: string; onClose: () => void
     ? REPEATS
     : [...REPEATS, [repeatValue(reminder.repeat), repeatLabel(reminder) ?? ""] as [string, string]];
   const setDate = (date: string) => update({ due: { ...reminder.due, date } });
-  const quickDates: [string, string][] = [
-    ["Aujourd’hui", today],
-    ["Demain", addDays(today, 1)],
-    ["Ce week-end", addDays(today, (5 - weekday(today) + 7) % 7)],
-    ["Semaine prochaine", addDays(today, 7 - weekday(today))],
-  ];
 
   const addTag = () => {
     const value = tag.trim().replace(/^#/, "").replace(/\s+/g, "-");
@@ -141,73 +135,34 @@ export function ReminderSheet({ id, onClose }: { id: string; onClose: () => void
         </div>
 
         <div className="group">
-          <label className="switch-row">
-            <span className="label">
-              <RowIcon name="calendar" color="red" />
-              Date
-            </span>
-            <input
-              type="checkbox"
-              role="switch"
-              checked={!!reminder.due}
-              onChange={(e) => update({ due: e.target.checked ? { date: today } : null })}
-            />
-          </label>
+          <PickerRow
+            icon="calendar"
+            color="red"
+            title="Date"
+            type="date"
+            value={reminder.due?.date}
+            label={reminder.due && capitalize(dayLabel(reminder.due.date, today))}
+            onPick={setDate}
+            onToggle={(on) => update({ due: on ? { date: today } : null })}
+          />
           {reminder.due && (
             <>
-              <div className="chips">
-                {quickDates.map(([label, date]) => (
-                  <button
-                    key={label}
-                    className={`chip${reminder.due?.date === date ? " on" : ""}`}
-                    onClick={() => setDate(date)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <input
-                className="field"
-                type="date"
-                value={reminder.due.date}
-                onChange={(e) => e.target.value && setDate(e.target.value)}
-                aria-label="Date"
+              <PickerRow
+                icon="clock"
+                color="blue"
+                title="Heure"
+                type="time"
+                value={reminder.due.time}
+                label={reminder.due.time && timeLabel(reminder.due.time)}
+                onPick={(time) => update({ due: { date: reminder.due!.date, time } })}
+                onToggle={(on) =>
+                  update({ due: { date: reminder.due!.date, ...(on ? { time: "09:00" } : {}) } })
+                }
               />
-              <label className="switch-row">
-                <span className="label">
-                  <RowIcon name="clock" color="blue" />
-                  Heure
-                </span>
-                <input
-                  type="checkbox"
-                  role="switch"
-                  checked={!!reminder.due.time}
-                  onChange={(e) =>
-                    update({
-                      due: {
-                        date: reminder.due!.date,
-                        ...(e.target.checked ? { time: "09:00" } : {}),
-                      },
-                    })
-                  }
-                />
-              </label>
-              {reminder.due.time && (
-                <input
-                  className="field"
-                  type="time"
-                  value={reminder.due.time}
-                  onChange={(e) =>
-                    e.target.value &&
-                    update({ due: { date: reminder.due!.date, time: e.target.value } })
-                  }
-                  aria-label="Heure"
-                />
-              )}
               <label className="select-row">
                 <span className="label">
                   <RowIcon name="bell" color="purple" />
-                  Alerte anticipée
+                  Alerte
                 </span>
                 <select
                   value={reminder.early ?? 0}
@@ -248,21 +203,28 @@ export function ReminderSheet({ id, onClose }: { id: string; onClose: () => void
                 </select>
               </label>
               {reminder.repeat && (
-                <label className="select-row">
+                <div className="select-row picker-row">
                   <span className="label indent">Fin de la répétition</span>
-                  <input
-                    type="date"
-                    value={reminder.repeat.until ?? ""}
-                    min={reminder.due.date}
-                    onChange={(e) => {
-                      const { until: _, ...rest } = reminder.repeat!;
-                      update({
-                        repeat: e.target.value ? { ...rest, until: e.target.value } : rest,
-                      });
-                    }}
-                    aria-label="Fin de la répétition"
-                  />
-                </label>
+                  <span className="end-value">
+                    {reminder.repeat.until
+                      ? capitalize(dayLabel(reminder.repeat.until, today))
+                      : "Jamais"}
+                    <input
+                      className="picker"
+                      type="date"
+                      value={reminder.repeat.until ?? ""}
+                      min={reminder.due.date}
+                      onClick={showPicker}
+                      onChange={(e) => {
+                        const { until: _, ...rest } = reminder.repeat!;
+                        update({
+                          repeat: e.target.value ? { ...rest, until: e.target.value } : rest,
+                        });
+                      }}
+                      aria-label="Fin de la répétition"
+                    />
+                  </span>
+                </div>
               )}
             </>
           )}
@@ -421,4 +383,87 @@ function removedWithChildren(reminders: Record<string, Reminder>, id: string): R
   };
   visit(id);
   return out;
+}
+
+const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
+/** Opens the browser's own picker; a tap on the transparent input does the same on iOS. */
+const showPicker = (event: React.MouseEvent<HTMLInputElement>) => {
+  try {
+    event.currentTarget.showPicker();
+  } catch {
+    // Not supported, or already open: the tap itself opens it.
+  }
+};
+
+/**
+ * A date or time row as in Reminders: a switch turns it on, the chosen value shows in the tint under the title, and a
+ * tap on it opens the phone's own picker (a transparent native input lies over the text).
+ */
+function PickerRow({
+  icon,
+  color,
+  title,
+  type,
+  value,
+  label,
+  onPick,
+  onToggle,
+}: {
+  icon: IconName;
+  color: string;
+  title: string;
+  type: "date" | "time";
+  value: string | undefined;
+  label: string | undefined;
+  onPick: (value: string) => void;
+  onToggle: (on: boolean) => void;
+}) {
+  const picker = useRef<HTMLInputElement>(null);
+  const [justEnabled, setJustEnabled] = useState(false);
+  // Turning the row on goes straight to choosing, as on iOS.
+  useEffect(() => {
+    if (!justEnabled || !picker.current) return;
+    setJustEnabled(false);
+    try {
+      picker.current.showPicker();
+    } catch {
+      // Needs a tap on the value instead.
+    }
+  }, [justEnabled, value]);
+
+  return (
+    <div className="switch-row picker-row">
+      <span className="label">
+        <RowIcon name={icon} color={color} />
+        <span className="label-text">
+          {title}
+          {value && (
+            <span className="value">
+              {label}
+              <input
+                ref={picker}
+                className="picker"
+                type={type}
+                value={value}
+                onClick={showPicker}
+                onChange={(e) => e.target.value && onPick(e.target.value)}
+                aria-label={`Changer : ${title.toLowerCase()}`}
+              />
+            </span>
+          )}
+        </span>
+      </span>
+      <input
+        type="checkbox"
+        role="switch"
+        checked={!!value}
+        aria-label={title}
+        onChange={(e) => {
+          onToggle(e.target.checked);
+          if (e.target.checked) setJustEnabled(true);
+        }}
+      />
+    </div>
+  );
 }

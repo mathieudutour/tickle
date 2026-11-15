@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { EmptyState } from "../components/Art";
 import { Icon } from "../components/Icon";
 import { ListEditor } from "../components/ListEditor";
@@ -140,27 +141,31 @@ export function Home({ navigate }: { navigate: (route: Route) => void }) {
         </>
       )}
 
-      <footer className="bottom-bar">
-        <button
-          className="new"
-          onClick={() => openSheet((close) => <NewReminderSheet onClose={close} />)}
-        >
-          <span className="plus" aria-hidden="true">
-            <Icon name="plus" />
-          </span>
-          Nouveau rappel
-        </button>
-        <button
-          className="link-button"
-          onClick={() =>
-            openSheet((close) => (
-              <ListEditor onClose={close} onCreated={(id) => navigate({ name: "list", id })} />
-            ))
-          }
-        >
-          Ajouter une liste
-        </button>
-      </footer>
+      {/* Outside the page, which shrinks back while a sheet is open: a fixed bar inside it would move with it. */}
+      {createPortal(
+        <footer className="bottom-bar">
+          <button
+            className="new"
+            onClick={() => openSheet((close) => <NewReminderSheet onClose={close} />)}
+          >
+            <span className="plus" aria-hidden="true">
+              <Icon name="plus" />
+            </span>
+            Nouveau rappel
+          </button>
+          <button
+            className="link-button"
+            onClick={() =>
+              openSheet((close) => (
+                <ListEditor onClose={close} onCreated={(id) => navigate({ name: "list", id })} />
+              ))
+            }
+          >
+            Ajouter une liste
+          </button>
+        </footer>,
+        document.body,
+      )}
     </div>
   );
 }
