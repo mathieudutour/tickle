@@ -7,8 +7,12 @@
   --faint: #8e8e93;
   --line: #c6c6c8;
   --fill: #e9e9ee;
-  --link: #0062cc;
+  /* Tickle's tint, from the icon's coral: the deepest shade of its gradient that still reads as text (4.8:1 on the
+     grey background). Buttons are filled with it in both themes, so white labels stay readable. */
+  --link: #c9284d;
+  --tint-fill: #c9284d;
   --danger: #d70015;
+  --danger-fill: #d70015;
   --scrim: rgba(0, 0, 0, 0.35);
   --inverse-bg: #1c1c1e;
   --inverse-ink: #fff;
@@ -41,7 +45,7 @@
     --faint: #8e8e93;
     --line: #38383a;
     --fill: #2c2c2e;
-    --link: #409cff;
+    --link: #ff7a8a;
     --danger: #ff6961;
     --scrim: rgba(0, 0, 0, 0.6);
     --inverse-bg: #f2f2f7;
@@ -68,6 +72,8 @@
 }
 
 html {
+  /* Native controls (date and time pickers, selection) take the tint too. */
+  accent-color: var(--link);
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
 }
@@ -1108,16 +1114,10 @@ input[role="switch"]:checked::after {
   width: 100%;
   min-height: 50px;
   border-radius: var(--radius);
-  background: var(--link);
+  background: var(--tint-fill);
   color: #fff;
   font-weight: 600;
   padding: 0 16px;
-}
-
-@media (prefers-color-scheme: dark) {
-  .cta {
-    background: #0a84ff;
-  }
 }
 
 .cta.slim {
@@ -1130,12 +1130,10 @@ input[role="switch"]:checked::after {
   color: var(--link);
 }
 
-.cta.danger-text {
-  color: var(--danger);
-}
-
+/* Deleting stays clearly apart from the coral buttons: filled red. */
+.cta.danger-text,
 .cta.danger {
-  background: var(--danger);
+  background: var(--danger-fill);
   color: #fff;
 }
 
@@ -1150,7 +1148,7 @@ input[role="switch"]:checked::after {
 }
 
 .pill.on {
-  background: var(--danger);
+  background: var(--danger-fill);
   color: #fff;
 }
 

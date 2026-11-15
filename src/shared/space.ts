@@ -123,7 +123,7 @@ export type SpaceAction =
 export const DEFAULT_LIST_ID = "rappels";
 
 export const freshSpace = (timeZone: string): Space => ({
-  lists: [{ id: DEFAULT_LIST_ID, name: "Rappels", color: "blue", icon: "📋", order: 0, sections: [] }],
+  lists: [{ id: DEFAULT_LIST_ID, name: "Rappels", color: "pink", icon: "📋", order: 0, sections: [] }],
   reminders: {},
   timeZone,
 });
