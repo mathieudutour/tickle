@@ -575,15 +575,6 @@ h3 {
   color: var(--link);
 }
 
-.flag {
-  align-self: stretch;
-  display: flex;
-  align-items: center;
-  padding-right: 4px;
-  font-size: 17px;
-  color: var(--c-orange);
-}
-
 .expand {
   align-self: center;
   color: var(--muted);

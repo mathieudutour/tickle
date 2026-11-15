@@ -92,7 +92,6 @@ const reminderFields = {
   },
   repeat: repeatSchema,
   priority: { type: "string", enum: PRIORITIES },
-  flagged: { type: "boolean" },
   tags: { type: "array", items: { type: "string" } },
   list: listRef,
   section: { type: "string", description: "A section name in the list." },
@@ -149,7 +148,6 @@ export function createTools(api: TickleApi): Tool[] {
       ...(r.repeat ? { repeat: repeatLabel(r) } : {}),
       ...(r.early ? { early_minutes: r.early } : {}),
       ...(r.priority ? { priority: PRIORITIES[r.priority] } : {}),
-      ...(r.flagged ? { flagged: true } : {}),
       ...(r.tags.length ? { tags: r.tags } : {}),
       ...(r.notes ? { notes: r.notes } : {}),
       ...(r.url ? { url: r.url } : {}),
@@ -239,7 +237,7 @@ export function createTools(api: TickleApi): Tool[] {
       name: "list_reminders",
       title: "Lister des rappels",
       description:
-        "Reminders of a list or a tag, flagged ones, those due by a date, or those matching a search. Open ones only unless include_completed or completed_only.",
+        "Reminders of a list or a tag, those due by a date, or those matching a search. Open ones only unless include_completed or completed_only.",
       inputSchema: object({
         list: listRef,
         due_by: {
@@ -248,7 +246,6 @@ export function createTools(api: TickleApi): Tool[] {
           description:
             "Only reminders due on or before this date (YYYY-MM-DD), overdue ones included.",
         },
-        flagged: { type: "boolean", description: "Only flagged reminders." },
         completed_only: {
           type: "boolean",
           description: "Only completed reminders, most recent first.",
@@ -276,7 +273,6 @@ export function createTools(api: TickleApi): Tool[] {
         }
         if (input.tag)
           reminders = reminders.filter((r) => r.tags.includes(String(input.tag).replace(/^#/, "")));
-        if (input.flagged) reminders = reminders.filter((r) => r.flagged);
         if (input.completed_only)
           reminders = reminders
             .filter((r) => r.completed)
@@ -335,7 +331,6 @@ export function createTools(api: TickleApi): Tool[] {
             listId: list.id,
             title,
             priority: 0,
-            flagged: false,
             tags: [],
             completed: false,
             createdAt: api.now().toISOString(),
@@ -536,7 +531,7 @@ export function createTools(api: TickleApi): Tool[] {
   ];
 }
 
-/** Title, notes, url, priority, flag and tags from a tool's input. */
+/** Title, notes, url, priority and tags from a tool's input. */
 function fields(input: Record<string, unknown>): ReminderPatch {
   const patch: ReminderPatch = {};
   if (typeof input.title === "string" && input.title.trim()) patch.title = input.title.trim();
@@ -547,7 +542,6 @@ function fields(input: Record<string, unknown>): ReminderPatch {
       0,
       PRIORITIES.indexOf(input.priority as (typeof PRIORITIES)[number]),
     ) as Priority;
-  if (typeof input.flagged === "boolean") patch.flagged = input.flagged;
   if (Array.isArray(input.tags)) patch.tags = input.tags.map(String);
   return patch;
 }

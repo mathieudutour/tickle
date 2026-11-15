@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { alertsOf } from "../lib/alerts";
 import { zonedInstant } from "../lib/dates";
-import { freshSpace, nextDate, normalizeSpace, spaceReducer, type Reminder, type Space, type SpaceAction } from "./space";
+import {
+  freshSpace,
+  nextDate,
+  normalizeSpace,
+  spaceReducer,
+  type Reminder,
+  type Space,
+  type SpaceAction,
+} from "./space";
 import { applyOnServer, receive, visibleState, type ClientSync, type ServerState } from "./sync";
 
 const TZ = "Europe/Paris";
@@ -10,7 +18,6 @@ const reminder = (id: string, extra: Partial<Reminder> = {}): Reminder => ({
   listId: "rappels",
   title: id,
   priority: 0,
-  flagged: false,
   tags: [],
   completed: false,
   createdAt: "2026-11-15T10:00:00.000Z",
@@ -32,22 +39,49 @@ describe("nextDate", () => {
   });
 
   it("stops after the end date", () => {
-    expect(nextDate("2026-11-15", { freq: "weekly", interval: 1, until: "2026-11-20" })).toBeUndefined();
+    expect(
+      nextDate("2026-11-15", { freq: "weekly", interval: 1, until: "2026-11-20" }),
+    ).toBeUndefined();
   });
 });
 
 describe("spaceReducer", () => {
   it("completes a repeating reminder by keeping a completed copy and moving it to its next date", () => {
-    let space = apply(freshSpace(TZ), { type: "addReminder", reminder: reminder("bins", { due: { date: "2026-11-17", time: "20:00" }, repeat: { freq: "weekly", interval: 1 } }) });
-    space = apply(space, { type: "setCompleted", id: "bins", completed: true, at: "2026-11-17T19:00:00Z", copyId: "bins-1", nextDue: { date: "2026-11-24", time: "20:00" } });
+    let space = apply(freshSpace(TZ), {
+      type: "addReminder",
+      reminder: reminder("bins", {
+        due: { date: "2026-11-17", time: "20:00" },
+        repeat: { freq: "weekly", interval: 1 },
+      }),
+    });
+    space = apply(space, {
+      type: "setCompleted",
+      id: "bins",
+      completed: true,
+      at: "2026-11-17T19:00:00Z",
+      copyId: "bins-1",
+      nextDue: { date: "2026-11-24", time: "20:00" },
+    });
     expect(space.reminders.bins).toMatchObject({ completed: false, due: { date: "2026-11-24" } });
-    expect(space.reminders["bins-1"]).toMatchObject({ completed: true, due: { date: "2026-11-17" } });
+    expect(space.reminders["bins-1"]).toMatchObject({
+      completed: true,
+      due: { date: "2026-11-17" },
+    });
     expect(space.reminders["bins-1"]!.repeat).toBeUndefined();
   });
 
   it("completes and deletes subtasks with their parent", () => {
-    let space = apply(freshSpace(TZ), { type: "addReminder", reminder: reminder("trip") }, { type: "addReminder", reminder: reminder("tickets", { parentId: "trip" }) });
-    space = apply(space, { type: "setCompleted", id: "trip", completed: true, at: "2026-11-15T10:00:00Z" });
+    let space = apply(
+      freshSpace(TZ),
+      { type: "addReminder", reminder: reminder("trip") },
+      { type: "addReminder", reminder: reminder("tickets", { parentId: "trip" }) },
+    );
+    space = apply(space, {
+      type: "setCompleted",
+      id: "trip",
+      completed: true,
+      at: "2026-11-15T10:00:00Z",
+    });
     expect(space.reminders.tickets!.completed).toBe(true);
     space = apply(space, { type: "deleteReminder", id: "trip" });
     expect(space.reminders).toEqual({});
@@ -56,8 +90,17 @@ describe("spaceReducer", () => {
   it("moves subtasks with their parent, drops repeat without a date, and refuses a cycle", () => {
     let space = apply(
       freshSpace(TZ),
-      { type: "addList", list: { id: "work", name: "Travail", color: "orange", icon: "💼", order: 1, sections: [] } },
-      { type: "addReminder", reminder: reminder("a", { due: { date: "2026-11-20" }, repeat: { freq: "daily", interval: 1 } }) },
+      {
+        type: "addList",
+        list: { id: "work", name: "Travail", color: "orange", icon: "💼", order: 1, sections: [] },
+      },
+      {
+        type: "addReminder",
+        reminder: reminder("a", {
+          due: { date: "2026-11-20" },
+          repeat: { freq: "daily", interval: 1 },
+        }),
+      },
       { type: "addReminder", reminder: reminder("b", { parentId: "a" }) },
     );
     space = apply(space, { type: "updateReminder", id: "a", patch: { listId: "work", due: null } });
@@ -70,12 +113,29 @@ describe("spaceReducer", () => {
   it("keeps at least one list, and deletes a list's reminders with it", () => {
     let space = apply(freshSpace(TZ), { type: "deleteList", id: "rappels" });
     expect(space.lists).toHaveLength(1);
-    space = apply(space, { type: "addList", list: { id: "x", name: "X", color: "red", icon: "x", order: 1, sections: [] } }, { type: "addReminder", reminder: reminder("r", { listId: "x" }) }, { type: "deleteList", id: "x" });
+    space = apply(
+      space,
+      {
+        type: "addList",
+        list: { id: "x", name: "X", color: "red", icon: "x", order: 1, sections: [] },
+      },
+      { type: "addReminder", reminder: reminder("r", { listId: "x" }) },
+      { type: "deleteList", id: "x" },
+    );
     expect(space.reminders).toEqual({});
   });
 
   it("normalizes garbage into a usable space", () => {
-    const space = normalizeSpace({ lists: "nope", reminders: { a: { id: "a", listId: "ghost" }, b: { id: "b", listId: "rappels", priority: 9, due: { date: "2026-13-45" } } } }, TZ);
+    const space = normalizeSpace(
+      {
+        lists: "nope",
+        reminders: {
+          a: { id: "a", listId: "ghost" },
+          b: { id: "b", listId: "rappels", priority: 9, due: { date: "2026-13-45" } },
+        },
+      },
+      TZ,
+    );
     expect(space.lists[0]!.id).toBe("rappels");
     expect(Object.keys(space.reminders)).toEqual(["b"]);
     expect(space.reminders.b).toMatchObject({ priority: 0 });
@@ -87,8 +147,19 @@ describe("sync", () => {
     let server: ServerState = { space: freshSpace(TZ), version: 0, recent: [] };
     let a: ClientSync = { confirmed: server.space, version: 0, pending: [] };
     let b: ClientSync = { ...a };
-    const e1 = { id: "1", action: { type: "addReminder", reminder: reminder("milk") } as SpaceAction };
-    const e2 = { id: "2", action: { type: "setCompleted", id: "milk", completed: true, at: "2026-11-15T10:00:00Z" } as SpaceAction };
+    const e1 = {
+      id: "1",
+      action: { type: "addReminder", reminder: reminder("milk") } as SpaceAction,
+    };
+    const e2 = {
+      id: "2",
+      action: {
+        type: "setCompleted",
+        id: "milk",
+        completed: true,
+        at: "2026-11-15T10:00:00Z",
+      } as SpaceAction,
+    };
     a = { ...a, pending: [e1] };
     b = { ...b, pending: [e2] };
     for (const e of [e1, e2]) {
@@ -107,7 +178,10 @@ describe("alerts", () => {
   it("alert at the local due time, minus the early warning, in the space's time zone", () => {
     const space = apply(
       freshSpace(TZ),
-      { type: "addReminder", reminder: reminder("call", { due: { date: "2026-11-16", time: "18:00" }, early: 15 }) },
+      {
+        type: "addReminder",
+        reminder: reminder("call", { due: { date: "2026-11-16", time: "18:00" }, early: 15 }),
+      },
       { type: "addReminder", reminder: reminder("bread", { due: { date: "2026-11-17" } }) },
       { type: "addReminder", reminder: reminder("done", { due: { date: "2026-11-16" } }) },
       { type: "setCompleted", id: "done", completed: true, at: "x" },
@@ -119,7 +193,11 @@ describe("alerts", () => {
   });
 
   it("handle summer time", () => {
-    expect(new Date(zonedInstant("2026-07-01", "09:00", TZ)).toISOString()).toBe("2026-07-01T07:00:00.000Z");
-    expect(new Date(zonedInstant("2026-03-29", "03:30", TZ)).toISOString()).toBe("2026-03-29T01:30:00.000Z");
+    expect(new Date(zonedInstant("2026-07-01", "09:00", TZ)).toISOString()).toBe(
+      "2026-07-01T07:00:00.000Z",
+    );
+    expect(new Date(zonedInstant("2026-03-29", "03:30", TZ)).toISOString()).toBe(
+      "2026-03-29T01:30:00.000Z",
+    );
   });
 });

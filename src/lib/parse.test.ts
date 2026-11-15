@@ -55,11 +55,10 @@ describe("parseQuickEntry", () => {
     expect(parse("Facture tous les mois")).toMatchObject({ repeat: { freq: "monthly" } });
   });
 
-  it("reads tags, priority and a flag", () => {
-    expect(parse("Acheter du lait #courses #urgent !! 🚩")).toEqual({
+  it("reads tags and priority", () => {
+    expect(parse("Acheter du lait #courses #urgent !!")).toEqual({
       title: "Acheter du lait",
       priority: 2,
-      flagged: true,
       tags: ["courses", "urgent"],
     });
   });
@@ -68,7 +67,6 @@ describe("parseQuickEntry", () => {
     expect(parse("Lire 1984")).toEqual({
       title: "Lire 1984",
       priority: 0,
-      flagged: false,
       tags: [],
     });
     expect(parse("Midi-Pyrénées guide")).toMatchObject({ title: "Midi-Pyrénées guide" });

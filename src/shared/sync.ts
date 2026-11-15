@@ -40,7 +40,10 @@ export interface ServerState {
 
 const RECENT_IDS = 500;
 
-export function applyOnServer(server: ServerState, envelope: unknown): { server: ServerState; reply: ServerMessage } {
+export function applyOnServer(
+  server: ServerState,
+  envelope: unknown,
+): { server: ServerState; reply: ServerMessage } {
   const e = envelope as Partial<Envelope>;
   const id = typeof e?.id === "string" && e.id.length <= 64 ? e.id : "";
   if (!id || !isSpaceAction(e.action)) return { server, reply: { t: "rejected", id } };
@@ -73,7 +76,10 @@ export const visibleState = (sync: ClientSync): Space =>
   sync.pending.reduce((state, e) => spaceReducer(state, e.action), sync.confirmed);
 
 /** Applies a server message. `resync` means a message was missed: ask for a fresh snapshot. */
-export function receive(sync: ClientSync, message: ServerMessage): { sync: ClientSync; resync?: boolean } {
+export function receive(
+  sync: ClientSync,
+  message: ServerMessage,
+): { sync: ClientSync; resync?: boolean } {
   switch (message.t) {
     case "snapshot":
       return { sync: { ...sync, confirmed: message.state, version: message.version } };

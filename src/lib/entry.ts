@@ -2,13 +2,11 @@ import type { Reminder, Space, SpaceAction } from "../shared/space";
 import type { QuickEntry } from "./parse";
 import { newId, orderAtEnd } from "./views";
 
-/** What the screen a reminder is added from implies: Today gives a date, Flagged a flag, a tag view its tag. */
+/** What the screen a reminder is added from implies: a list and section, a parent for a subtask, a tag view its tag. */
 export interface EntryDefaults {
   listId: string;
   sectionId?: string;
   parentId?: string;
-  date?: string;
-  flagged?: boolean;
   tag?: string;
 }
 
@@ -18,7 +16,7 @@ export function addFromEntry(
   entry: QuickEntry,
   defaults: EntryDefaults,
 ): SpaceAction & { reminder: Reminder } {
-  const due = entry.due ?? (defaults.date ? { date: defaults.date } : undefined);
+  const due = entry.due;
   const tags = [...new Set([...entry.tags, ...(defaults.tag ? [defaults.tag] : [])])];
   return {
     type: "addReminder",
@@ -31,7 +29,6 @@ export function addFromEntry(
       ...(due ? { due } : {}),
       ...(entry.repeat && due ? { repeat: entry.repeat } : {}),
       priority: entry.priority,
-      flagged: entry.flagged || !!defaults.flagged,
       tags,
       completed: false,
       createdAt: new Date().toISOString(),

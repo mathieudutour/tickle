@@ -126,11 +126,6 @@ export function ReminderRow({
             <span className="url">{reminder.url.replace(/^https?:\/\/(www\.)?/, "")}</span>
           )}
         </button>
-        {reminder.flagged && (
-          <span className="flag" role="img" aria-label="Avec drapeau">
-            <Icon name="flag" />
-          </span>
-        )}
         {children.length > 0 && (
           <button
             className={`expand${expanded ? " on" : ""}`}

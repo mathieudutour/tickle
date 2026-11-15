@@ -41,7 +41,14 @@ export interface Due {
   time?: string;
 }
 
-export const FREQUENCIES = ["daily", "weekdays", "weekends", "weekly", "monthly", "yearly"] as const;
+export const FREQUENCIES = [
+  "daily",
+  "weekdays",
+  "weekends",
+  "weekly",
+  "monthly",
+  "yearly",
+] as const;
 export type Frequency = (typeof FREQUENCIES)[number];
 
 export interface Repeat {
@@ -69,7 +76,6 @@ export interface Reminder {
   early?: number;
   repeat?: Repeat;
   priority: Priority;
-  flagged: boolean;
   tags: string[];
   completed: boolean;
   completedAt?: string;
@@ -93,7 +99,6 @@ export type ReminderPatch = Partial<{
   early: number | null;
   repeat: Repeat | null;
   priority: Priority;
-  flagged: boolean;
   tags: string[];
   listId: string;
   sectionId: string | null;
@@ -115,7 +120,14 @@ export type SpaceAction =
    * Completing a repeating reminder keeps a completed copy (`copyId`) and moves the reminder to its next date
    * (`nextDue`, computed by the device), like Reminders. Without a next date it's simply completed.
    */
-  | { type: "setCompleted"; id: string; completed: boolean; at: string; copyId?: string; nextDue?: Due }
+  | {
+      type: "setCompleted";
+      id: string;
+      completed: boolean;
+      at: string;
+      copyId?: string;
+      nextDue?: Due;
+    }
   | { type: "deleteReminder"; id: string }
   | { type: "clearCompleted"; listId?: string }
   | { type: "setTimeZone"; timeZone: string };
@@ -123,7 +135,9 @@ export type SpaceAction =
 export const DEFAULT_LIST_ID = "rappels";
 
 export const freshSpace = (timeZone: string): Space => ({
-  lists: [{ id: DEFAULT_LIST_ID, name: "Rappels", color: "pink", icon: "📋", order: 0, sections: [] }],
+  lists: [
+    { id: DEFAULT_LIST_ID, name: "Rappels", color: "pink", icon: "📋", order: 0, sections: [] },
+  ],
   reminders: {},
   timeZone,
 });
@@ -182,7 +196,8 @@ const asRepeat = (value: unknown): Repeat | undefined =>
       }
     : undefined;
 
-const asPriority = (value: unknown): Priority => ([0, 1, 2, 3].includes(value as number) ? (value as Priority) : 0);
+const asPriority = (value: unknown): Priority =>
+  [0, 1, 2, 3].includes(value as number) ? (value as Priority) : 0;
 const asTags = (value: unknown) =>
   Array.isArray(value)
     ? [
@@ -206,13 +221,18 @@ function asList(value: unknown): List | undefined {
     sections: Array.isArray(value.sections)
       ? value.sections
           .filter((s): s is Record<string, unknown> => isObject(s) && isString(s.id))
-          .map((s) => ({ id: s.id as string, name: text(s.name, 80) || "Section", order: finite(s.order) }))
+          .map((s) => ({
+            id: s.id as string,
+            name: text(s.name, 80) || "Section",
+            order: finite(s.order),
+          }))
       : [],
   };
 }
 
 function asReminder(value: unknown): Reminder | undefined {
-  if (!isObject(value) || !isString(value.id) || !value.id || !isString(value.listId)) return undefined;
+  if (!isObject(value) || !isString(value.id) || !value.id || !isString(value.listId))
+    return undefined;
   const due = asDue(value.due);
   const repeat = due ? asRepeat(value.repeat) : undefined;
   const early =
@@ -223,7 +243,9 @@ function asReminder(value: unknown): Reminder | undefined {
     id: value.id,
     listId: value.listId,
     ...(isString(value.sectionId) ? { sectionId: value.sectionId } : {}),
-    ...(isString(value.parentId) && value.parentId !== value.id ? { parentId: value.parentId } : {}),
+    ...(isString(value.parentId) && value.parentId !== value.id
+      ? { parentId: value.parentId }
+      : {}),
     title: text(value.title, 500),
     ...(isString(value.notes) && value.notes ? { notes: text(value.notes, 5000) } : {}),
     ...(isString(value.url) && value.url ? { url: text(value.url, 2000) } : {}),
@@ -231,10 +253,11 @@ function asReminder(value: unknown): Reminder | undefined {
     ...(early ? { early } : {}),
     ...(repeat ? { repeat } : {}),
     priority: asPriority(value.priority),
-    flagged: value.flagged === true,
     tags: asTags(value.tags),
     completed: value.completed === true,
-    ...(value.completed === true && isString(value.completedAt) ? { completedAt: value.completedAt } : {}),
+    ...(value.completed === true && isString(value.completedAt)
+      ? { completedAt: value.completedAt }
+      : {}),
     createdAt: isString(value.createdAt) ? value.createdAt : "1970-01-01T00:00:00.000Z",
     order: finite(value.order),
   };
@@ -282,7 +305,8 @@ export const isSpaceAction = (value: unknown): value is SpaceAction =>
 export function withDescendants(space: Space, id: string): string[] {
   const ids = [id];
   for (let i = 0; i < ids.length; i++)
-    for (const r of Object.values(space.reminders)) if (r.parentId === ids[i] && !ids.includes(r.id)) ids.push(r.id);
+    for (const r of Object.values(space.reminders))
+      if (r.parentId === ids[i] && !ids.includes(r.id)) ids.push(r.id);
   return ids;
 }
 
@@ -300,10 +324,13 @@ function applyPatch(space: Space, reminder: Reminder, patch: ReminderPatch): Rem
   if ("url" in patch) set("url", patch.url ? text(patch.url, 2000) : null);
   if ("due" in patch) set("due", patch.due === null ? null : (asDue(patch.due) ?? reminder.due));
   if ("early" in patch)
-    set("early", typeof patch.early === "number" && patch.early > 0 ? Math.round(patch.early) : null);
-  if ("repeat" in patch) set("repeat", patch.repeat === null ? null : (asRepeat(patch.repeat) ?? reminder.repeat));
+    set(
+      "early",
+      typeof patch.early === "number" && patch.early > 0 ? Math.round(patch.early) : null,
+    );
+  if ("repeat" in patch)
+    set("repeat", patch.repeat === null ? null : (asRepeat(patch.repeat) ?? reminder.repeat));
   if ("priority" in patch) next.priority = asPriority(patch.priority);
-  if ("flagged" in patch) next.flagged = patch.flagged === true;
   if ("tags" in patch) next.tags = asTags(patch.tags);
   if ("order" in patch) next.order = finite(patch.order, reminder.order);
   if ("listId" in patch && space.lists.some((l) => l.id === patch.listId)) {
@@ -312,7 +339,12 @@ function applyPatch(space: Space, reminder: Reminder, patch: ReminderPatch): Rem
   }
   if ("sectionId" in patch) {
     const list = space.lists.find((l) => l.id === next.listId);
-    set("sectionId", patch.sectionId && list?.sections.some((s) => s.id === patch.sectionId) ? patch.sectionId : null);
+    set(
+      "sectionId",
+      patch.sectionId && list?.sections.some((s) => s.id === patch.sectionId)
+        ? patch.sectionId
+        : null,
+    );
   }
   if ("parentId" in patch) {
     // A subtask's parent must exist, in the same list, and not be one of its own subtasks.
@@ -343,7 +375,9 @@ export function spaceReducer(space: Space, action: SpaceAction): Space {
           l.id === action.id
             ? {
                 ...l,
-                ...(isString(action.name) && action.name.trim() ? { name: text(action.name.trim(), 80) } : {}),
+                ...(isString(action.name) && action.name.trim()
+                  ? { name: text(action.name.trim(), 80) }
+                  : {}),
                 ...(COLORS.includes(action.color as Color) ? { color: action.color as Color } : {}),
                 ...(isString(action.icon) && action.icon ? { icon: text(action.icon, 8) } : {}),
               }
@@ -370,7 +404,9 @@ export function spaceReducer(space: Space, action: SpaceAction): Space {
       };
       return {
         ...space,
-        lists: [...space.lists].sort((a, b) => rank(a.id) - rank(b.id)).map((l, order) => ({ ...l, order })),
+        lists: [...space.lists]
+          .sort((a, b) => rank(a.id) - rank(b.id))
+          .map((l, order) => ({ ...l, order })),
       };
     }
     case "addSection":
@@ -381,13 +417,18 @@ export function spaceReducer(space: Space, action: SpaceAction): Space {
         lists: space.lists.map((l) => {
           if (l.id !== action.listId) return l;
           if (action.type === "addSection") {
-            const section = isObject(action.section) && isString(action.section.id) ? action.section : undefined;
+            const section =
+              isObject(action.section) && isString(action.section.id) ? action.section : undefined;
             if (!section || l.sections.some((s) => s.id === section.id)) return l;
             return {
               ...l,
               sections: [
                 ...l.sections,
-                { id: section.id, name: text(section.name, 80) || "Section", order: finite(section.order) },
+                {
+                  id: section.id,
+                  name: text(section.name, 80) || "Section",
+                  order: finite(section.order),
+                },
               ],
             };
           }
@@ -416,9 +457,16 @@ export function spaceReducer(space: Space, action: SpaceAction): Space {
       };
     case "addReminder": {
       const reminder = asReminder(action.reminder);
-      if (!reminder || space.reminders[reminder.id] || !space.lists.some((l) => l.id === reminder.listId)) return space;
+      if (
+        !reminder ||
+        space.reminders[reminder.id] ||
+        !space.lists.some((l) => l.id === reminder.listId)
+      )
+        return space;
       const placed =
-        reminder.parentId && !space.reminders[reminder.parentId] ? { ...reminder, parentId: undefined } : reminder;
+        reminder.parentId && !space.reminders[reminder.parentId]
+          ? { ...reminder, parentId: undefined }
+          : reminder;
       return { ...space, reminders: { ...space.reminders, [placed.id]: asReminder(placed)! } };
     }
     case "updateReminder": {
@@ -437,15 +485,32 @@ export function spaceReducer(space: Space, action: SpaceAction): Space {
       if (!reminder || !isString(action.at)) return space;
       if (!action.completed) {
         const { completedAt: _, ...rest } = reminder;
-        return { ...space, reminders: { ...space.reminders, [reminder.id]: { ...rest, completed: false } } };
-      }
-      const nextDue = asDue(action.nextDue);
-      if (reminder.repeat && nextDue && isString(action.copyId) && !space.reminders[action.copyId]) {
-        const { repeat: _r, ...rest } = reminder;
-        const copy: Reminder = { ...rest, id: action.copyId, completed: true, completedAt: action.at };
         return {
           ...space,
-          reminders: { ...space.reminders, [copy.id]: copy, [reminder.id]: { ...reminder, due: nextDue } },
+          reminders: { ...space.reminders, [reminder.id]: { ...rest, completed: false } },
+        };
+      }
+      const nextDue = asDue(action.nextDue);
+      if (
+        reminder.repeat &&
+        nextDue &&
+        isString(action.copyId) &&
+        !space.reminders[action.copyId]
+      ) {
+        const { repeat: _r, ...rest } = reminder;
+        const copy: Reminder = {
+          ...rest,
+          id: action.copyId,
+          completed: true,
+          completedAt: action.at,
+        };
+        return {
+          ...space,
+          reminders: {
+            ...space.reminders,
+            [copy.id]: copy,
+            [reminder.id]: { ...reminder, due: nextDue },
+          },
         };
       }
       // Completing a reminder completes its subtasks.
@@ -465,6 +530,8 @@ export function spaceReducer(space: Space, action: SpaceAction): Space {
       return { ...space, reminders: without(space.reminders, gone) };
     }
     case "setTimeZone":
-      return isString(action.timeZone) && action.timeZone ? { ...space, timeZone: action.timeZone } : space;
+      return isString(action.timeZone) && action.timeZone
+        ? { ...space, timeZone: action.timeZone }
+        : space;
   }
 }

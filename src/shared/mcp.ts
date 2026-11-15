@@ -18,7 +18,7 @@ type JsonRpcResponse =
   | { jsonrpc: "2.0"; id: string | number | null; error: { code: number; message: string } };
 
 const INSTRUCTIONS =
-  "Tickle is a household's to-do app, like Apple Reminders: lists (with sections), reminders with dates, repeats, alerts, priority, flags, tags and subtasks. Dates are in the household's local time; get_overview gives today's date. Start with get_overview. Changes show up on the household's devices right away.";
+  "Tickle is a household's to-do app, like Apple Reminders: lists (with sections), reminders with dates, repeats, alerts, priority, tags and subtasks. Dates are in the household's local time; get_overview gives today's date. Start with get_overview. Changes show up on the household's devices right away.";
 
 const isRequest = (value: unknown): value is JsonRpcRequest =>
   !!value &&

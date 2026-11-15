@@ -68,12 +68,9 @@ describe("agent tools", () => {
       due_time: "09:30",
       early_minutes: 30,
     });
-    expect(
-      await call("update_reminder", { id, due_time: null, priority: "high", flagged: true }),
-    ).toMatchObject({
+    expect(await call("update_reminder", { id, due_time: null, priority: "high" })).toMatchObject({
       due: "2026-11-20",
       priority: "high",
-      flagged: true,
     });
     const cleared = await call("update_reminder", { id, due_date: null });
     expect(cleared.due).toBeUndefined();

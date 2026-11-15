@@ -9,7 +9,6 @@ export interface QuickEntry {
   due?: Due;
   repeat?: Repeat;
   priority: Priority;
-  flagged: boolean;
   tags: string[];
 }
 
@@ -62,14 +61,13 @@ export function parseQuickEntry(input: string, now: { date: string; time: string
     return match;
   };
   const today = now.date;
-  const entry: QuickEntry = { title: "", priority: 0, flagged: false, tags: [] };
+  const entry: QuickEntry = { title: "", priority: 0, tags: [] };
 
-  // Tags, priority (! to !!!) and a flag.
+  // Tags and priority (! to !!!).
   for (let tag = take(/(?<=\s)#([\p{L}\p{N}_-]+)/u); tag; tag = take(/(?<=\s)#([\p{L}\p{N}_-]+)/u))
     entry.tags.push(tag[1]!);
   const bangs = take(/(?<=\s)(!{1,3})(?=\s)/);
   if (bangs) entry.priority = bangs[1]!.length as Priority;
-  if (take(/(?<=\s)🚩(?=\s)/u)) entry.flagged = true;
 
   // Repeats. A weekly repeat on a named day also sets the first date.
   let date: string | undefined;

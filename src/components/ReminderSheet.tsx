@@ -231,18 +231,6 @@ export function ReminderSheet({ id, onClose }: { id: string; onClose: () => void
         </div>
 
         <div className="group">
-          <label className="switch-row">
-            <span className="label">
-              <RowIcon name="flag" color="orange" />
-              Drapeau
-            </span>
-            <input
-              type="checkbox"
-              role="switch"
-              checked={reminder.flagged}
-              onChange={(e) => update({ flagged: e.target.checked })}
-            />
-          </label>
           <label className="select-row">
             <span className="label">
               <RowIcon name="exclamation" color="red" />

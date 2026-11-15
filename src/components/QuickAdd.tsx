@@ -14,7 +14,6 @@ export function EntryPreview({ text }: { text: string }) {
   if (entry.repeat) chips.push(["repeat", repeatLabel(entry)!]);
   if (entry.priority > 0)
     chips.push(["exclamation", ["", "Faible", "Moyenne", "Élevée"][entry.priority]!]);
-  if (entry.flagged) chips.push(["flag", "Drapeau"]);
   for (const tag of entry.tags) chips.push(["tag", tag]);
   if (!text.trim() || !chips.length) return null;
   return (

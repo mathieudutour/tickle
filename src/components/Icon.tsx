@@ -13,7 +13,6 @@ const PATHS = {
   bell: "M6 16.5V11a6 6 0 1 1 12 0v5.5l1.5 1.5h-15L6 16.5ZM10 20.5a2 2 0 0 0 4 0",
   repeat:
     "M4.5 11V9.5A3.5 3.5 0 0 1 8 6h11.5M16.5 3l3 3-3 3M19.5 13v1.5A3.5 3.5 0 0 1 16 18H4.5M7.5 21l-3-3 3-3",
-  flag: "M5.5 21V4.5M5.5 4.5h12l-3 4.25 3 4.25h-12Z",
   exclamation: "M12 4.5v10M12 19v.01",
   list: "M9 6.5h11M9 12h11M9 17.5h11M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01",
   tag: "M10 3.5 4.5 20.5M19.5 3.5 14 20.5M4 8.5h16.5M3.5 15.5H20",
@@ -30,9 +29,6 @@ const PATHS = {
 
 export type IconName = keyof typeof PATHS;
 
-/** Shapes that read better solid, like the flag (an outline looks like the letter F). */
-const FILLED = new Set<IconName>(["flag"]);
-
 export function Icon({ name, className }: { name: IconName; className?: string }) {
   return (
     <svg
@@ -45,7 +41,7 @@ export function Icon({ name, className }: { name: IconName; className?: string }
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <path d={PATHS[name]} fill={FILLED.has(name) ? "currentColor" : undefined} />
+      <path d={PATHS[name]} />
     </svg>
   );
 }
