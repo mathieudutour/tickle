@@ -46,6 +46,7 @@ export function NewReminderSheet({ listId, onClose }: { listId?: string; onClose
           rows={1}
           value={text}
           onChange={(e) => setText(e.target.value)}
+          ref={autoGrow}
           onInput={(e) => autoGrow(e.currentTarget)}
           // Enter adds, as in a single-line field; the text only wraps to show it all.
           onKeyDown={(e) => {
@@ -53,14 +54,15 @@ export function NewReminderSheet({ listId, onClose }: { listId?: string; onClose
             e.preventDefault();
             add(false);
           }}
-          placeholder="Ex. : Sortir les poubelles tous les mardis 20h"
+          placeholder="Que faut-il faire ?"
           aria-label="Rappel"
           data-autofocus
           enterKeyHint="done"
         />
         <EntryPreview text={text} />
         <p className="note">
-          Écris comme tu parles : « demain 18h », « tous les lundis », #tag, !! pour la priorité.
+          Écris comme tu parles : « Sortir les poubelles tous les mardis 20h », « Pain demain
+          #courses », « Appeler Léa !! @Tom ».
         </p>
         <label className="select-row group">
           <span className="label">

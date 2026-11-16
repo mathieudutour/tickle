@@ -329,7 +329,7 @@ export function createTools(api: TickleApi): Tool[] {
       name: "add_reminder",
       title: "Ajouter un rappel",
       description:
-        "Add a reminder to a list (the first list by default). Give the date as due_date/due_time, or as a French phrase in `when` (« demain 18h », « lundi », « tous les mardis 20h », « dans 3 jours »). Give parent_id to add a subtask.",
+        "Add a reminder to a list (the first list by default). Give the date as due_date/due_time, or as a French phrase in `when` (« demain 18h », « lundi », « tous les mardis 20h », « dans 3 jours »). Give parent_id to add a subtask.",
       inputSchema: object(
         {
           ...reminderFields,

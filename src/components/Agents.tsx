@@ -95,7 +95,7 @@ export function Agents({ spaceKey }: { spaceKey: string }) {
           </div>
           <p className="note">
             Pour Hermes, ajoute ces lignes à <code>~/.hermes/config.yaml</code>. Pour un autre agent
-            : serveur MCP « HTTP », adresse <code>{endpoint}</code>, en-tête{" "}
+            : serveur MCP « HTTP », adresse <code>{endpoint}</code>, en-tête{" "}
             <code>Authorization: Bearer</code> suivi du jeton.
           </p>
           <button className="link-button" onClick={() => setCreated(null)}>

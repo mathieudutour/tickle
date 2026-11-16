@@ -104,7 +104,7 @@ export function Home({ navigate }: { navigate: (route: Route) => void }) {
             ))}
           </ul>
           {!results.length && (
-            <EmptyState art="no-results">Aucun résultat pour « {query.trim()} »</EmptyState>
+            <EmptyState art="no-results">Aucun résultat pour « {query.trim()} »</EmptyState>
           )}
         </section>
       ) : (

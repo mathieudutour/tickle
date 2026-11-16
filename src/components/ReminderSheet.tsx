@@ -102,7 +102,7 @@ export function ReminderSheet({ id, onClose }: { id: string; onClose: () => void
             className="link-button parent"
             onClick={() => openSheet((close) => <ReminderSheet id={parent.id} onClose={close} />)}
           >
-            ‹ Sous-tâche de « {parent.title} »
+            ‹ Sous-tâche de « {parent.title} »
           </button>
         )}
 

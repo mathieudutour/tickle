@@ -1105,6 +1105,11 @@ h3 {
   color: var(--faint);
 }
 
+/* A hint, not a title: lighter than what gets typed. */
+.title-field::placeholder {
+  font-weight: 400;
+}
+
 .title-field {
   font-weight: 600;
   font-size: 19px;

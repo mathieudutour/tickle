@@ -88,7 +88,7 @@ export function PersonSheet({
           </label>
         </div>
         <p className="note">
-          Les rappels assignés à quelqu’un d’autre n’apparaissent pas dans ton « Aujourd’hui », et
+          Les rappels assignés à quelqu’un d’autre n’apparaissent pas dans ton « Aujourd’hui », et
           leurs alertes ne sonnent que chez cette personne.
         </p>
         <button className="cta" disabled={!name.trim()}>
@@ -109,7 +109,7 @@ export function WhoAmISheet({ onClose }: { onClose: () => void }) {
       <div className="in menu">
         <SheetHeader id="who-title" title="Qui es-tu ?" onClose={onClose} />
         <p className="note">
-          Sur cet appareil, « Aujourd’hui » ne montrera que tes rappels et ceux de personne.
+          Sur cet appareil, « Aujourd’hui » ne montrera que tes rappels et ceux de personne.
         </p>
         {space.members.map((member) => (
           <button
@@ -149,7 +149,7 @@ export function PeopleSettings() {
   return (
     <>
       <p className="note spaced-bottom">
-        Assigne un rappel à quelqu’un : il n’apparaît que dans son « Aujourd’hui », et seule cette
+        Assigne un rappel à quelqu’un : il n’apparaît que dans son « Aujourd’hui », et seule cette
         personne reçoit l’alerte.
       </p>
       {space.members.map((member) => (
@@ -209,7 +209,7 @@ export function WhoAmIBanner() {
       onClick={() => openSheet((close) => <WhoAmISheet onClose={close} />)}
     >
       <span>
-        <b>Qui es-tu ?</b> Choisis ton nom pour ne voir que tes rappels dans « Aujourd’hui ».
+        <b>Qui es-tu ?</b> Choisis ton nom pour ne voir que tes rappels dans « Aujourd’hui ».
       </span>
       <span className="pill">Choisir</span>
     </button>

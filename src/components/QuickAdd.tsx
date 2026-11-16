@@ -95,7 +95,7 @@ export function QuickAdd({
             setOpen(false);
           }}
           onKeyDown={(e) => e.key === "Escape" && (setText(""), setOpen(false))}
-          placeholder="Ex. : Appeler maman demain 18h"
+          placeholder="Ex. : Pain demain 9h"
           aria-label={label}
           enterKeyHint="done"
         />
