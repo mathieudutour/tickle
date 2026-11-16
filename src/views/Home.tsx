@@ -32,8 +32,19 @@ import type { List } from "../shared/space";
 import { useStore } from "../store/StoreProvider";
 import { Header } from "./Header";
 
-/** The lists screen: search, « Mes listes » and tags. In edit mode, lists are reordered by their handle. */
-export function Home({ navigate }: { navigate: (route: Route) => void }) {
+/**
+ * The lists screen: search, « Mes listes » and tags. In edit mode, lists are reordered by their handle. On a wide
+ * screen it's the sidebar, with the screen showing beside it (`current`) highlighted.
+ */
+export function Home({
+  navigate,
+  sidebar,
+  current,
+}: {
+  navigate: (route: Route) => void;
+  sidebar?: boolean;
+  current?: Route;
+}) {
   const { space, status, dispatch } = useStore();
   const { openSheet } = useUi();
   const me = useMe(space);
@@ -58,6 +69,38 @@ export function Home({ navigate }: { navigate: (route: Route) => void }) {
       ids: arrayMove(ids, ids.indexOf(String(active.id)), ids.indexOf(String(over.id))),
     });
   };
+
+  const actions = (
+    <footer className={sidebar ? "sidebar-actions" : "bottom-bar"}>
+      <button
+        className="new"
+        onClick={() =>
+          openSheet((close) => (
+            <NewReminderSheet
+              onClose={close}
+              // A new reminder goes to the list showing beside the sidebar.
+              listId={current?.name === "list" ? current.id : undefined}
+            />
+          ))
+        }
+      >
+        <span className="plus" aria-hidden="true">
+          <Icon name="plus" />
+        </span>
+        Nouveau rappel
+      </button>
+      <button
+        className="link-button"
+        onClick={() =>
+          openSheet((close) => (
+            <ListEditor onClose={close} onCreated={(id) => navigate({ name: "list", id })} />
+          ))
+        }
+      >
+        Ajouter une liste
+      </button>
+    </footer>
+  );
 
   return (
     <div className={`home${dragging ? " dragging" : ""}`}>
@@ -111,7 +154,11 @@ export function Home({ navigate }: { navigate: (route: Route) => void }) {
         <>
           <ul className="lists card">
             <li>
-              <a href={hrefOf({ name: "today" })} className="list-row">
+              <a
+                href={hrefOf({ name: "today" })}
+                className={`list-row${current && (current.name === "today" || current.name === "home") ? " active" : ""}`}
+                aria-current={current?.name === "today" ? "page" : undefined}
+              >
                 <span className="list-badge today" aria-hidden="true">
                   <Icon name="calendar" />
                 </span>
@@ -139,7 +186,12 @@ export function Home({ navigate }: { navigate: (route: Route) => void }) {
             <SortableContext items={lists.map((l) => l.id)} strategy={verticalListSortingStrategy}>
               <ul className="lists card">
                 {lists.map((list) => (
-                  <ListRow key={list.id} list={list} editing={editing} />
+                  <ListRow
+                    key={list.id}
+                    list={list}
+                    editing={editing}
+                    active={current?.name === "list" && current.id === list.id}
+                  />
                 ))}
               </ul>
             </SortableContext>
@@ -150,7 +202,11 @@ export function Home({ navigate }: { navigate: (route: Route) => void }) {
               <h2 className="home-title">Tags</h2>
               <div className="chips tags">
                 {tags.map((tag) => (
-                  <a key={tag} className="chip" href={hrefOf({ name: "tag", tag })}>
+                  <a
+                    key={tag}
+                    className={`chip${current?.name === "tag" && current.tag === tag ? " on" : ""}`}
+                    href={hrefOf({ name: "tag", tag })}
+                  >
                     #{tag}
                   </a>
                 ))}
@@ -160,37 +216,15 @@ export function Home({ navigate }: { navigate: (route: Route) => void }) {
         </>
       )}
 
-      {/* Outside the page, which shrinks back while a sheet is open: a fixed bar inside it would move with it. */}
-      {createPortal(
-        <footer className="bottom-bar">
-          <button
-            className="new"
-            onClick={() => openSheet((close) => <NewReminderSheet onClose={close} />)}
-          >
-            <span className="plus" aria-hidden="true">
-              <Icon name="plus" />
-            </span>
-            Nouveau rappel
-          </button>
-          <button
-            className="link-button"
-            onClick={() =>
-              openSheet((close) => (
-                <ListEditor onClose={close} onCreated={(id) => navigate({ name: "list", id })} />
-              ))
-            }
-          >
-            Ajouter une liste
-          </button>
-        </footer>,
-        document.body,
-      )}
+      {/* On a phone the bar is fixed, outside the page, which shrinks back while a sheet is open: a fixed bar inside it
+          would move with it. In the sidebar it sits at its bottom. */}
+      {sidebar ? actions : createPortal(actions, document.body)}
     </div>
   );
 }
 
 /** A row of « Mes listes »: a link to the list, or in edit mode its info button and drag handle. */
-function ListRow({ list, editing }: { list: List; editing: boolean }) {
+function ListRow({ list, editing, active }: { list: List; editing: boolean; active: boolean }) {
   const { space } = useStore();
   const { openSheet } = useUi();
   const {
@@ -238,7 +272,11 @@ function ListRow({ list, editing }: { list: List; editing: boolean }) {
           </button>
         </div>
       ) : (
-        <a href={hrefOf({ name: "list", id: list.id })} className="list-row">
+        <a
+          href={hrefOf({ name: "list", id: list.id })}
+          className={`list-row${active ? " active" : ""}`}
+          aria-current={active ? "page" : undefined}
+        >
           <span className="list-badge" aria-hidden="true">
             {list.icon}
           </span>

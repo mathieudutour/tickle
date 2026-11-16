@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
+import { WIDE } from "./useWide";
 
 // The screen lives in the URL hash, so screens can be linked, bookmarked and left with Back.
 export type Route =
@@ -58,8 +59,12 @@ export function useRoute(): [Route, (route: Route) => void] {
       const from = depth(current.current);
       const to = depth(next);
       current.current = next;
+      // Side by side on a wide screen, nothing slides: the sidebar stays and the middle changes.
       const skip =
-        systemAnimated || from === to || matchMedia("(prefers-reduced-motion: reduce)").matches;
+        systemAnimated ||
+        from === to ||
+        matchMedia(WIDE).matches ||
+        matchMedia("(prefers-reduced-motion: reduce)").matches;
       systemAnimated = false;
       if (skip || !document.startViewTransition) return setHash(next);
       document.documentElement.dataset.navigation = to > from ? "push" : "pop";

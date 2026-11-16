@@ -32,6 +32,8 @@
   --sheet-bg: #f2f2f7;
   --sheet-card: #fff;
   --sheet-fill: #e9e9ee;
+  /* The lists' sidebar on a wide screen, a step darker than the page, as on a Mac. */
+  --sidebar-bg: #e8e8ed;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --radius: 12px;
 }
@@ -64,6 +66,7 @@
     --sheet-bg: #1c1c1e;
     --sheet-card: #2c2c2e;
     --sheet-fill: #3a3a3c;
+    --sidebar-bg: #111113;
   }
 }
 
@@ -1720,6 +1723,161 @@ html[data-navigation="pop"]::view-transition-new(page) {
   from {
     transform: translateX(-30%);
     filter: brightness(0.92);
+  }
+}
+
+/* ---------- Wide screens: lists, list and details side by side ---------- */
+
+/* Matches WIDE in src/lib/useWide.ts. */
+@media (min-width: 1024px) {
+  .page:has(> .split) {
+    max-width: none;
+    min-height: 0;
+    padding: 0;
+  }
+
+  .split {
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr) minmax(340px, 400px);
+    height: 100dvh;
+  }
+
+  .pane {
+    height: 100dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0 16px 24px;
+  }
+
+  .sidebar {
+    --bg: var(--sidebar-bg);
+    background: var(--bg);
+    border-right: 0.5px solid var(--line);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar .home {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar-actions {
+    position: sticky;
+    bottom: 0;
+    margin-top: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    background: var(--bg);
+    border-top: 0.5px solid var(--line);
+  }
+
+  .sidebar-actions .new {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 36px;
+    color: var(--link);
+    font-weight: 600;
+  }
+
+  .sidebar-actions button {
+    font-size: 15px;
+    white-space: nowrap;
+  }
+
+  /* The list or day showing beside the sidebar, highlighted across the whole row. */
+  .lists {
+    overflow: hidden;
+  }
+
+  .lists li:has(> .list-row.active) {
+    background: color-mix(in srgb, var(--link) 14%, var(--card));
+  }
+
+  .middle > * {
+    max-width: 760px;
+    margin: 0 auto;
+  }
+
+  /* The sidebar is always there: no « ‹ Listes ». */
+  .middle .back {
+    visibility: hidden;
+  }
+
+  .inspector {
+    --bg: var(--sheet-bg);
+    --card: var(--sheet-card);
+    --fill: var(--sheet-fill);
+    background: var(--bg);
+    border-left: 0.5px solid var(--line);
+  }
+
+  .inspector .empty-note {
+    margin-top: 40vh;
+  }
+
+  .details-pane .in {
+    padding: 8px 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .details-pane .in p {
+    margin: 0;
+  }
+
+  .details-pane .sheet-head {
+    margin: 0 -16px;
+  }
+
+  .details-pane .in > .field {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+  }
+
+  /* The reminder whose details are showing. */
+  .reminder.selected > .row {
+    background: color-mix(in srgb, var(--link) 12%, var(--card));
+  }
+
+  /* Other sheets open as dialogs in the middle, and the page doesn't shrink behind them. */
+  .sheet-viewport {
+    align-items: center;
+  }
+
+  .sheet {
+    --bleed: 0px;
+    max-width: 540px;
+    max-height: 85dvh;
+    border-radius: 14px;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.3);
+  }
+
+  .sheet[data-starting-style],
+  .sheet[data-ending-style] {
+    transform: translateY(16px) scale(0.98);
+    opacity: 0;
+  }
+
+  .sheet {
+    transition:
+      transform 0.3s cubic-bezier(0.32, 0.72, 0, 1),
+      opacity 0.2s;
+  }
+
+  .grabber {
+    display: none;
+  }
+
+  .page-indent[data-active] {
+    transform: none;
+    border-radius: 0;
   }
 }
 

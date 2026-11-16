@@ -6,7 +6,7 @@ import {
   useTransform,
   type PanInfo,
 } from "motion/react";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useContext, useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   completeAction,
   dueLabel,
@@ -21,7 +21,9 @@ import { useStore } from "../store/StoreProvider";
 import { Icon } from "./Icon";
 import { Avatar } from "./People";
 import { timeLabel } from "../lib/dates";
-import { ReminderSheet } from "./ReminderSheet";
+import { DetailsPane } from "../lib/detailsPane";
+import { useWide } from "../lib/useWide";
+import { useOpenReminder } from "./ReminderSheet";
 import { useUi } from "./UiProvider";
 import { useDeleteReminder } from "./useDeleteReminder";
 
@@ -62,7 +64,7 @@ export function ReminderRow({
   depth = 0,
 }: Props) {
   const { space, dispatch } = useStore();
-  const { openSheet, toast } = useUi();
+  const { toast } = useUi();
   const deleteReminder = useDeleteReminder();
   const [expanded, setExpanded] = useState(false);
   const list = space.lists.find((l) => l.id === reminder.listId);
@@ -121,14 +123,16 @@ export function ReminderRow({
   ];
 
   const swipe = useSwipeActions(swipeable);
-  const openDetails = () =>
-    openSheet((close) => <ReminderSheet id={reminder.id} onClose={close} />);
+  const openReminder = useOpenReminder();
+  const wide = useWide();
+  const selected = useContext(DetailsPane).selectedId === reminder.id && wide;
+  const openDetails = () => openReminder(reminder.id);
 
   return (
     <>
       <li
         ref={sortable?.setNodeRef}
-        className={`reminder${reminder.completed ? " done" : ""}${depth ? " sub" : ""}${sortable?.isDragging ? " placeholder" : ""}${pop ? " pop" : ""}`}
+        className={`reminder${reminder.completed ? " done" : ""}${depth ? " sub" : ""}${sortable?.isDragging ? " placeholder" : ""}${pop ? " pop" : ""}${selected ? " selected" : ""}`}
         data-id={reminder.id}
         style={
           {

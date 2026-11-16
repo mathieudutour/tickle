@@ -10,6 +10,7 @@ import {
 } from "react";
 import { Drawer } from "@base-ui/react/drawer";
 import { copyText } from "../lib/clipboard";
+import { DetailsPane } from "../lib/detailsPane";
 import { SheetPresence } from "./Sheet";
 
 type SheetRenderer = (close: () => void) => ReactNode;
@@ -30,6 +31,8 @@ export function UiProvider({ children }: { children: ReactNode }) {
   // The sheet stays mounted while it animates out: `open` turns false first, then it's dropped once closed.
   const [sheet, setSheet] = useState<{ render: SheetRenderer; key: number } | null>(null);
   const [open, setOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const pane = useMemo(() => ({ selectedId, show: setSelectedId }), [selectedId]);
 
   const toast = useCallback((text: string, undo?: () => void) => {
     setMessage({ text, undo });
@@ -58,29 +61,31 @@ export function UiProvider({ children }: { children: ReactNode }) {
 
   return (
     <UiContext.Provider value={ui}>
-      <Drawer.Provider>
-        {/* While a sheet is open, the page shrinks back over a dark background, as on iOS. */}
-        <Drawer.IndentBackground className="page-indent-background" />
-        <Drawer.Indent className="page-indent">
-          <div className="page">{children}</div>
-        </Drawer.Indent>
-        <SheetPresence.Provider value={presence}>
-          {sheet && <Fragment key={sheet.key}>{sheet.render(closeSheet)}</Fragment>}
-        </SheetPresence.Provider>
-      </Drawer.Provider>
-      <div className={`toast${visible ? " on" : ""}`} role="status" aria-live="polite">
-        <span>{message?.text}</span>
-        {message?.undo && (
-          <button
-            onClick={() => {
-              message.undo?.();
-              setVisible(false);
-            }}
-          >
-            Annuler
-          </button>
-        )}
-      </div>
+      <DetailsPane.Provider value={pane}>
+        <Drawer.Provider>
+          {/* While a sheet is open, the page shrinks back over a dark background, as on iOS. */}
+          <Drawer.IndentBackground className="page-indent-background" />
+          <Drawer.Indent className="page-indent">
+            <div className="page">{children}</div>
+          </Drawer.Indent>
+          <SheetPresence.Provider value={presence}>
+            {sheet && <Fragment key={sheet.key}>{sheet.render(closeSheet)}</Fragment>}
+          </SheetPresence.Provider>
+        </Drawer.Provider>
+        <div className={`toast${visible ? " on" : ""}`} role="status" aria-live="polite">
+          <span>{message?.text}</span>
+          {message?.undo && (
+            <button
+              onClick={() => {
+                message.undo?.();
+                setVisible(false);
+              }}
+            >
+              Annuler
+            </button>
+          )}
+        </div>
+      </DetailsPane.Provider>
     </UiContext.Provider>
   );
 }

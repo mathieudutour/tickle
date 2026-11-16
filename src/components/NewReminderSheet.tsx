@@ -5,14 +5,17 @@ import { useStore } from "../store/StoreProvider";
 import { autoGrow } from "../lib/autoGrow";
 import { RowIcon } from "./Icon";
 import { EntryPreview } from "./QuickAdd";
-import { ReminderSheet } from "./ReminderSheet";
+import { useOpenReminder } from "./ReminderSheet";
+import { useWide } from "../lib/useWide";
 import { Sheet, SheetHeader } from "./Sheet";
 import { useUi } from "./UiProvider";
 
 /** « Nouveau rappel » from the home screen: type it in French, pick a list. */
 export function NewReminderSheet({ listId, onClose }: { listId?: string; onClose: () => void }) {
   const { space, dispatch } = useStore();
-  const { openSheet, toast } = useUi();
+  const { toast } = useUi();
+  const openReminder = useOpenReminder();
+  const wide = useWide();
   const lists = [...space.lists].sort((a, b) => a.order - b.order);
   const [text, setText] = useState("");
   const [list, setList] = useState(
@@ -24,8 +27,11 @@ export function NewReminderSheet({ listId, onClose }: { listId?: string; onClose
     if (!entry.title) return;
     const action = addFromEntry(space, entry, { listId: list });
     dispatch(action);
-    if (details) openSheet((close) => <ReminderSheet id={action.reminder.id} onClose={close} />);
-    else {
+    if (details) {
+      // In the pane beside the list on a wide screen, in a sheet otherwise.
+      if (wide) onClose();
+      openReminder(action.reminder.id);
+    } else {
       onClose();
       toast(`Ajouté : ${entry.title}`);
     }

@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { autoGrow } from "../lib/autoGrow";
+import { DetailsPane } from "../lib/detailsPane";
+import { useWide } from "../lib/useWide";
 import { dayLabel, timeLabel } from "../lib/dates";
 import { nowLocal, repeatLabel, subtasks } from "../lib/views";
 import type { Priority, ReminderPatch, Repeat } from "../shared/space";
@@ -43,10 +45,61 @@ const PRIORITIES = ["Aucune", "Faible", "Moyenne", "Élevée"];
 
 const repeatValue = (repeat?: Repeat) => (repeat ? `${repeat.freq}:${repeat.interval}` : "");
 
+/** Opens a reminder's details: in the right pane on a wide screen, in a sheet otherwise. */
+export function useOpenReminder() {
+  const pane = useContext(DetailsPane);
+  const wide = useWide();
+  const { openSheet } = useUi();
+  return useCallback(
+    (id: string) =>
+      wide ? pane.show(id) : openSheet((close) => <ReminderSheet id={id} onClose={close} />),
+    [wide, pane, openSheet],
+  );
+}
+
+export const ReminderSheet = ({ id, onClose }: { id: string; onClose: () => void }) => (
+  <ReminderDetails id={id} onClose={onClose} inSheet />
+);
+
+/** The details in the right pane of the wide layout. */
+export const ReminderPane = ({ id, onClose }: { id: string; onClose: () => void }) => (
+  <ReminderDetails id={id} onClose={onClose} inSheet={false} />
+);
+
+/** In a sheet, or as a pane beside the list. */
+function Frame({
+  inSheet,
+  onClose,
+  children,
+}: {
+  inSheet: boolean;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  return inSheet ? (
+    <Sheet onClose={onClose} labelledBy="r-title">
+      {children}
+    </Sheet>
+  ) : (
+    <aside className="details-pane" aria-labelledby="r-title">
+      {children}
+    </aside>
+  );
+}
+
 /** Every detail of a reminder, edited in place: changes sync as they're made. */
-export function ReminderSheet({ id, onClose }: { id: string; onClose: () => void }) {
+function ReminderDetails({
+  id,
+  onClose,
+  inSheet,
+}: {
+  id: string;
+  onClose: () => void;
+  inSheet: boolean;
+}) {
   const { space, dispatch } = useStore();
   const { openSheet } = useUi();
+  const openReminder = useOpenReminder();
   const deleteReminder = useDeleteReminder();
   const reminder = space.reminders[id];
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -64,12 +117,12 @@ export function ReminderSheet({ id, onClose }: { id: string; onClose: () => void
 
   if (!reminder) {
     return (
-      <Sheet onClose={onClose} labelledBy="r-title">
+      <Frame inSheet={inSheet} onClose={onClose}>
         <div className="in">
           <SheetHeader id="r-title" title="Rappel introuvable" onClose={onClose} />
           <p className="note">Ce rappel a été supprimé.</p>
         </div>
-      </Sheet>
+      </Frame>
     );
   }
 
@@ -91,17 +144,14 @@ export function ReminderSheet({ id, onClose }: { id: string; onClose: () => void
   };
 
   return (
-    <Sheet onClose={onClose} labelledBy="r-title">
+    <Frame inSheet={inSheet} onClose={onClose}>
       <div
         className="in reminder-sheet"
         style={{ "--accent": `var(--c-${list?.color ?? "blue"})` } as React.CSSProperties}
       >
         <SheetHeader id="r-title" title="Détails" onClose={onClose} />
         {parent && (
-          <button
-            className="link-button parent"
-            onClick={() => openSheet((close) => <ReminderSheet id={parent.id} onClose={close} />)}
-          >
+          <button className="link-button parent" onClick={() => openReminder(parent.id)}>
             ‹ Sous-tâche de « {parent.title} »
           </button>
         )}
@@ -269,7 +319,8 @@ export function ReminderSheet({ id, onClose }: { id: string; onClose: () => void
                     onClose={close}
                     onAdded={(member) => {
                       dispatch({ type: "updateReminder", id, patch: { assignee: member.id } });
-                      openSheet((closeAgain) => <ReminderSheet id={id} onClose={closeAgain} />);
+                      // Back to this reminder (in the pane, it's still showing).
+                      if (inSheet) openReminder(id);
                     }}
                   />
                 ));
@@ -389,7 +440,7 @@ export function ReminderSheet({ id, onClose }: { id: string; onClose: () => void
             : "Supprimer le rappel"}
         </button>
       </div>
-    </Sheet>
+    </Frame>
   );
 }
 
