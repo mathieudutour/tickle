@@ -1718,6 +1718,27 @@ html[data-navigation="pop"]::view-transition-new(page) {
   }
 }
 
+/* ---------- When something breaks ---------- */
+
+.crash {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: calc(env(safe-area-inset-top) + 48px) 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.crash h1 {
+  font-size: 34px;
+}
+
+.crash pre {
+  white-space: pre-wrap;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 /* ---------- Toast ---------- */
 
 .toast {

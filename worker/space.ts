@@ -90,7 +90,12 @@ export class Space extends DurableObject<Env> {
     // Devices ping to detect dead connections; answered here without waking the object.
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
     void ctx.blockConcurrencyWhile(async () => {
-      this.server = await ctx.storage.get<ServerState>(STORAGE_KEY);
+      const stored = await ctx.storage.get<ServerState>(STORAGE_KEY);
+      // A space saved by an older version lacks newer fields (like `members`): fill in their defaults when reading it.
+      this.server = stored && {
+        ...stored,
+        space: normalizeSpace(stored.space, stored.space?.timeZone ?? "Europe/Paris"),
+      };
     });
   }
 

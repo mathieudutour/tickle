@@ -251,3 +251,27 @@ describe("members", () => {
     expect(alertsOf(space)[0]).toMatchObject({ reminderId: "a", assignee: "lea" });
   });
 });
+
+describe("older spaces", () => {
+  it("get the fields added since, when a device receives them", () => {
+    const old = {
+      lists: [{ id: "rappels", name: "Rappels" }],
+      reminders: { a: reminder("a") },
+      timeZone: TZ,
+    };
+    const sync: ClientSync = { confirmed: freshSpace(TZ), version: 0, pending: [] };
+    const { sync: next } = receive(sync, {
+      t: "snapshot",
+      version: 3,
+      state: old as unknown as Space,
+    });
+    expect(next.confirmed.members).toEqual([]);
+    expect(next.confirmed.reminders.a).toBeDefined();
+    // And the reducer works on it.
+    const added = spaceReducer(next.confirmed, {
+      type: "addMember",
+      member: { id: "lea", name: "Léa", color: "pink" },
+    });
+    expect(added.members).toHaveLength(1);
+  });
+});

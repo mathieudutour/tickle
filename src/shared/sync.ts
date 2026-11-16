@@ -5,7 +5,7 @@
 // its own actions immediately on top of the last state the server confirmed, and replays them after each confirmed
 // change ("rebase"). Because the reducer is deterministic, every device ends up with the server's state.
 
-import { spaceReducer, isSpaceAction, type Space, type SpaceAction } from "./space";
+import { isSpaceAction, normalizeSpace, spaceReducer, type Space, type SpaceAction } from "./space";
 
 export interface Envelope {
   /** Unique per action, so an action resent after a reconnect is applied once. */
@@ -82,7 +82,14 @@ export function receive(
 ): { sync: ClientSync; resync?: boolean } {
   switch (message.t) {
     case "snapshot":
-      return { sync: { ...sync, confirmed: message.state, version: message.version } };
+      // A space saved by an older version of the app lacks newer fields (like `members`): fill in their defaults.
+      return {
+        sync: {
+          ...sync,
+          confirmed: normalizeSpace(message.state, sync.confirmed.timeZone),
+          version: message.version,
+        },
+      };
     case "applied": {
       if (message.version <= sync.version) return { sync };
       if (message.version !== sync.version + 1) return { sync, resync: true };
