@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { autoGrow } from "../lib/autoGrow";
 import { dayLabel, timeLabel } from "../lib/dates";
 import { nowLocal, repeatLabel, subtasks } from "../lib/views";
-import type { Priority, Reminder, ReminderPatch, Repeat } from "../shared/space";
+import type { Priority, ReminderPatch, Repeat } from "../shared/space";
 import { useStore } from "../store/StoreProvider";
 import { QuickAdd } from "./QuickAdd";
 import { ReminderRow } from "./ReminderRow";
@@ -10,6 +10,7 @@ import { RowIcon, type IconName } from "./Icon";
 import { PersonSheet } from "./People";
 import { Sheet, SheetHeader } from "./Sheet";
 import { useUi } from "./UiProvider";
+import { useDeleteReminder } from "./useDeleteReminder";
 
 const REPEATS: [string, string][] = [
   ["", "Jamais"],
@@ -45,7 +46,8 @@ const repeatValue = (repeat?: Repeat) => (repeat ? `${repeat.freq}:${repeat.inte
 /** Every detail of a reminder, edited in place: changes sync as they're made. */
 export function ReminderSheet({ id, onClose }: { id: string; onClose: () => void }) {
   const { space, dispatch } = useStore();
-  const { openSheet, toast } = useUi();
+  const { openSheet } = useUi();
+  const deleteReminder = useDeleteReminder();
   const reminder = space.reminders[id];
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [tag, setTag] = useState("");
@@ -375,12 +377,8 @@ export function ReminderSheet({ id, onClose }: { id: string; onClose: () => void
           className={`cta ghost danger-text${confirmDelete ? " danger" : ""}`}
           onClick={() => {
             if (!confirmDelete) return setConfirmDelete(true);
-            const removed = removedWithChildren(space.reminders, id);
-            dispatch({ type: "deleteReminder", id });
             onClose();
-            toast(`Supprimé : ${reminder.title}`, () => {
-              for (const r of removed) dispatch({ type: "addReminder", reminder: r });
-            });
+            deleteReminder(id);
           }}
           onBlur={() => setConfirmDelete(false)}
         >
@@ -393,19 +391,6 @@ export function ReminderSheet({ id, onClose }: { id: string; onClose: () => void
       </div>
     </Sheet>
   );
-}
-
-/** A reminder and its subtasks, parents first, to put them back on undo. */
-function removedWithChildren(reminders: Record<string, Reminder>, id: string): Reminder[] {
-  const out: Reminder[] = [];
-  const visit = (current: string) => {
-    const r = reminders[current];
-    if (!r) return;
-    out.push(r);
-    for (const child of Object.values(reminders)) if (child.parentId === current) visit(child.id);
-  };
-  visit(id);
-  return out;
 }
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);

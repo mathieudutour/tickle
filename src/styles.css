@@ -468,8 +468,16 @@ h3 {
   display: none;
 }
 
+/* A reminder row slides over its swipe actions (ReminderRow); quick-add rows are plain. */
 .reminder {
   position: relative;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.reminder > .row,
+.quick-add.reminder {
   display: flex;
   align-items: flex-start;
   gap: 2px;
@@ -477,10 +485,101 @@ h3 {
   padding-right: 4px;
 }
 
+.reminder > .row {
+  position: relative;
+  z-index: 1;
+  /* Vertical moves scroll the page; horizontal ones are the swipe. */
+  touch-action: pan-y;
+  background: var(--card);
+  transition: background 0.25s;
+}
+
+/* Pressed, as an iOS table cell. */
+.reminder > .row:has(.body:active) {
+  background: color-mix(in srgb, var(--fill) 70%, var(--card));
+  transition: none;
+}
+
+.swipe-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+.swipe-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  white-space: nowrap;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.swipe-action.details {
+  background: var(--c-gray);
+}
+
+.swipe-action.delete {
+  flex: 1;
+  background: var(--danger-fill);
+}
+
+/* While a row is being moved: a gap where it was, and the lifted copy under the finger. */
+.reminder.placeholder > * {
+  visibility: hidden;
+}
+
+.reminders.lifted {
+  border-radius: var(--radius);
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.2),
+    0 2px 8px rgba(0, 0, 0, 0.12);
+  animation: lift 0.2s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@keyframes lift {
+  from {
+    transform: scale(1);
+    box-shadow: none;
+  }
+  to {
+    transform: scale(1.03);
+  }
+}
+
+.list-view.dragging .reminder.sub {
+  display: none;
+}
+
+.lists .lifted-row {
+  position: relative;
+  z-index: 2;
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+/* Checking a reminder: a little pop, as in Reminders. */
+.reminder.pop .check i {
+  animation: check-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes check-pop {
+  40% {
+    transform: scale(1.18);
+  }
+}
+
 /* Separators start at the text, as in Reminders. */
 .reminder + .reminder::before {
   content: "";
   position: absolute;
+  z-index: 2;
   top: 0;
   right: 0;
   left: calc(48px + var(--depth, 0) * 32px);
@@ -613,48 +712,14 @@ h3 {
   touch-action: none;
   cursor: grab;
   user-select: none;
-  opacity: 0.45;
-  transition: opacity 0.15s;
-}
-
-/* With a mouse, handles appear on the row under the pointer; on touch they stay, quietly. */
-@media (hover: hover) {
-  .handle {
-    opacity: 0;
-  }
-
-  li:hover > .handle,
-  li:hover .handle,
-  .handle:focus-visible {
-    opacity: 1;
-  }
-}
-
-.lists .handle {
-  opacity: 1;
 }
 
 .dragging,
 .dragging * {
   cursor: grabbing !important;
+  -webkit-user-select: none;
   user-select: none;
   -webkit-user-select: none;
-}
-
-[data-drop="before"] {
-  box-shadow: inset 0 2px 0 var(--accent);
-}
-
-[data-drop="after"] {
-  box-shadow: inset 0 -2px 0 var(--accent);
-}
-
-[data-drop="into"] {
-  color: var(--accent);
-}
-
-.drop-zone {
-  height: 8px;
 }
 
 .quick-add input {
@@ -742,8 +807,7 @@ h3 {
   height: 18px;
 }
 
-.section-title.static,
-[data-drop="into"] input {
+.section-title.static {
   color: var(--accent);
 }
 
@@ -1540,6 +1604,118 @@ pre {
 .check-mark {
   color: var(--link);
   font-weight: 700;
+}
+
+/* ---------- Press feedback, as on iOS ---------- */
+
+.link-button,
+.icon-button,
+.back,
+.sheet-close,
+.pill,
+.chip,
+.cta {
+  transition:
+    opacity 0.2s,
+    filter 0.2s;
+}
+
+.link-button:active,
+.icon-button:active,
+.back:active,
+.sheet-close:active,
+.pill:active,
+.chip:active {
+  opacity: 0.4;
+  transition: none;
+}
+
+.cta:active {
+  filter: brightness(0.88);
+  transition: none;
+}
+
+.list-row,
+.menu .menu-item,
+.who-banner {
+  transition: background 0.25s;
+}
+
+.list-row:active,
+.menu .menu-item:active {
+  background: var(--fill);
+  transition: none;
+}
+
+/* ---------- Moving between screens ---------- */
+
+/* Going into a screen slides it in from the right over the dimmed one before; going back slides it away. */
+/* Opaque, so the screen sliding over the other one hides it. */
+.page {
+  view-transition-name: page;
+  background: var(--bg);
+}
+
+::view-transition-group(page) {
+  animation: none;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+
+html[data-navigation]::view-transition-old(page),
+html[data-navigation]::view-transition-new(page) {
+  mix-blend-mode: normal;
+  animation-duration: 0.45s;
+  animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  animation-fill-mode: both;
+}
+
+html[data-navigation="push"]::view-transition-new(page) {
+  animation-name: slide-from-right;
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12);
+}
+
+html[data-navigation="push"]::view-transition-old(page) {
+  animation-name: slide-back-left;
+}
+
+html[data-navigation="pop"]::view-transition-old(page) {
+  z-index: 1;
+  animation-name: slide-to-right;
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12);
+}
+
+html[data-navigation="pop"]::view-transition-new(page) {
+  animation-name: slide-forward-from-left;
+}
+
+@keyframes slide-from-right {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes slide-back-left {
+  to {
+    transform: translateX(-30%);
+    filter: brightness(0.92);
+  }
+}
+
+@keyframes slide-to-right {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes slide-forward-from-left {
+  from {
+    transform: translateX(-30%);
+    filter: brightness(0.92);
+  }
 }
 
 /* ---------- Toast ---------- */

@@ -1,4 +1,24 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  closestCorners,
+  DndContext,
+  DragOverlay,
+  MouseSensor,
+  TouchSensor,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { useEffect, useState } from "react";
 import { EmptyState } from "../components/Art";
 import { Icon, RowIcon } from "../components/Icon";
 import { ListEditor } from "../components/ListEditor";
@@ -7,10 +27,8 @@ import { QuickAdd } from "../components/QuickAdd";
 import { ReminderRow } from "../components/ReminderRow";
 import { useUi } from "../components/UiProvider";
 import type { Route } from "../lib/router";
-import { useDrag, type DropTarget } from "../lib/useDrag";
 import { useLinger } from "../lib/useLinger";
 import { listReminders, newId, orderBetween } from "../lib/views";
-import type { Reminder } from "../shared/space";
 import { useStore } from "../store/StoreProvider";
 import { Header } from "./Header";
 
@@ -53,7 +71,6 @@ export function ListView({ id, navigate }: { id: string; navigate: (route: Route
   const list = space.lists.find((l) => l.id === id);
   const [showCompleted, setShowCompleted] = useShowCompleted(id);
   const [lingering, linger] = useLinger();
-  const container = useRef<HTMLDivElement>(null);
 
   const all = list ? listReminders(space, list.id, true) : [];
   const visible = all.filter((r) => showCompleted || !r.completed || lingering.has(r.id));
@@ -71,37 +88,70 @@ export function ListView({ id, navigate }: { id: string; navigate: (route: Route
     ),
   }));
 
-  // ---------- Dragging ----------
-  const drop = useCallback(
-    (draggedId: string, to: DropTarget) => {
-      const dragged = space.reminders[draggedId];
-      if (!dragged) return;
-      const place = (sectionId: string | undefined, siblings: Reminder[], index: number) => {
-        const order = orderBetween(siblings[index - 1]?.order, siblings[index]?.order);
-        dispatch({
-          type: "updateReminder",
-          id: draggedId,
-          patch: { order, sectionId: sectionId ?? null },
-        });
-      };
-      if ("section" in to) {
-        const section = to.section || undefined;
-        const siblings =
-          groups.find((g) => g.section === section)?.reminders.filter((r) => r.id !== draggedId) ??
-          [];
-        return place(section, siblings, siblings.length);
-      }
-      const over = space.reminders[to.id];
-      if (!over || over.id === draggedId || over.parentId) return;
-      const group = groups.find((g) => g.reminders.some((r) => r.id === over.id));
-      const siblings = group?.reminders.filter((r) => r.id !== draggedId) ?? [];
-      const index = siblings.findIndex((r) => r.id === over.id) + (to.after ? 1 : 0);
-      place(group?.section, siblings, index);
-    },
-    [space, groups, dispatch],
+  // ---------- Reordering ----------
+  // Press and hold a row (or drag it with a mouse) to move it, within its section or to another one. While dragging,
+  // `items` holds the arrangement on screen; it's written to the reminders' order and section on drop.
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 300, tolerance: 6 } }),
   );
+  const [active, setActive] = useState<string | null>(null);
+  const [items, setItems] = useState<Record<string, string[]> | null>(null);
+  const base = Object.fromEntries(
+    groups.map((g) => [keyOf(g.section), g.reminders.map((r) => r.id)]),
+  );
+  const current = items ?? base;
+  const containerOf = (id: string, arrangement = current) =>
+    id in arrangement ? id : Object.keys(arrangement).find((k) => arrangement[k]!.includes(id));
 
-  const { dragging, start: startDrag } = useDrag(container, drop);
+  const onDragStart = ({ active }: DragStartEvent) => {
+    setActive(String(active.id));
+    setItems(base);
+    navigator.vibrate?.(8);
+  };
+  // Moving over another section moves the row into it, so the rows there make room.
+  const onDragOver = ({ active, over }: DragOverEvent) => {
+    if (!over) return;
+    const id = String(active.id);
+    const from = containerOf(id);
+    const to = containerOf(String(over.id));
+    if (!from || !to || from === to) return;
+    setItems((previous) => {
+      const arrangement = previous ?? base;
+      const target = arrangement[to]!.filter((i) => i !== id);
+      const overIndex = target.indexOf(String(over.id));
+      target.splice(overIndex >= 0 ? overIndex : target.length, 0, id);
+      return { ...arrangement, [from]: arrangement[from]!.filter((i) => i !== id), [to]: target };
+    });
+  };
+  const onDragEnd = ({ active, over }: DragEndEvent) => {
+    const id = String(active.id);
+    let arrangement = items ?? base;
+    const to = over ? containerOf(String(over.id), arrangement) : undefined;
+    if (over && to) {
+      const ids = arrangement[to]!;
+      const from = ids.indexOf(id);
+      const into = ids.indexOf(String(over.id));
+      if (from >= 0 && into >= 0 && from !== into)
+        arrangement = { ...arrangement, [to]: arrayMove(ids, from, into) };
+    }
+    setActive(null);
+    setItems(null);
+    const key = containerOf(id, arrangement);
+    const moved = space.reminders[id];
+    if (!key || !moved) return;
+    const ids = arrangement[key]!;
+    const index = ids.indexOf(id);
+    const sectionId = key === NONE ? undefined : key;
+    const order = orderBetween(
+      space.reminders[ids[index - 1]!]?.order,
+      space.reminders[ids[index + 1]!]?.order,
+    );
+    // Dropped where it started: nothing to save.
+    const unchanged = containerOf(id, base) === key && base[key]!.indexOf(id) === index;
+    if (!unchanged)
+      dispatch({ type: "updateReminder", id, patch: { order, sectionId: sectionId ?? null } });
+  };
 
   if (!list) {
     return (
@@ -155,9 +205,8 @@ export function ListView({ id, navigate }: { id: string; navigate: (route: Route
 
   return (
     <div
-      className={`list-view${dragging ? " dragging" : ""}`}
+      className={`list-view${active ? " dragging" : ""}`}
       style={{ "--accent": `var(--c-${list.color})` } as React.CSSProperties}
-      ref={container}
     >
       <Header
         back={() => navigate({ name: "home" })}
@@ -194,30 +243,60 @@ export function ListView({ id, navigate }: { id: string; navigate: (route: Route
         </p>
       )}
 
-      {groups.map((group) =>
-        group.section === undefined && !group.reminders.length && list.sections.length ? null : (
-          <section key={group.section ?? "none"} className="group-list">
-            {group.name !== undefined && (
-              <SectionTitle listId={list.id} sectionId={group.section!} name={group.name} />
-            )}
-            {group.section === undefined && list.sections.length > 0 && (
-              <div data-section="" className="drop-zone" />
-            )}
-            <ul className="reminders">
-              {group.reminders.map((r) => (
-                <ReminderRow
-                  key={r.id}
-                  reminder={r}
-                  showCompleted={showCompleted}
-                  onCompleted={linger}
-                  onDragStart={startDrag}
-                />
-              ))}
-              <QuickAdd defaults={{ listId: list.id, sectionId: group.section }} />
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCorners}
+        onDragStart={onDragStart}
+        onDragOver={onDragOver}
+        onDragEnd={onDragEnd}
+        onDragCancel={() => {
+          setActive(null);
+          setItems(null);
+        }}
+      >
+        {groups.map((group) => {
+          const key = keyOf(group.section);
+          const ids = current[key] ?? [];
+          // The « no section » group only shows when it has reminders, or as a place to drop one.
+          if (group.section === undefined && !ids.length && list.sections.length && !active)
+            return null;
+          return (
+            <section key={key} className="group-list">
+              {group.name !== undefined && (
+                <SectionTitle listId={list.id} sectionId={group.section!} name={group.name} />
+              )}
+              <SortableContext id={key} items={ids} strategy={verticalListSortingStrategy}>
+                <DroppableList id={key}>
+                  {ids.map((reminderId) => {
+                    const reminder = space.reminders[reminderId];
+                    return reminder ? (
+                      <SortableRow
+                        key={reminderId}
+                        reminder={reminder}
+                        showCompleted={showCompleted}
+                        onCompleted={linger}
+                      />
+                    ) : null;
+                  })}
+                  <QuickAdd defaults={{ listId: list.id, sectionId: group.section }} />
+                </DroppableList>
+              </SortableContext>
+            </section>
+          );
+        })}
+        {/* The row under the finger, lifted above the list as on iOS. */}
+        <DragOverlay dropAnimation={{ duration: 280, easing: "cubic-bezier(0.32, 0.72, 0, 1)" }}>
+          {active && space.reminders[active] ? (
+            <ul className="reminders lifted">
+              <ReminderRow
+                reminder={space.reminders[active]!}
+                showCompleted={showCompleted}
+                swipeable={false}
+              />
             </ul>
-          </section>
-        ),
-      )}
+          ) : null}
+        </DragOverlay>
+      </DndContext>
       {!visible.length &&
         !list.sections.length &&
         (completedCount ? (
@@ -255,5 +334,35 @@ function SectionTitle({
         onFocus={(e) => name === "Nouvelle section" && e.target.select()}
       />
     </h3>
+  );
+}
+
+const NONE = "none";
+const keyOf = (section: string | undefined) => section ?? NONE;
+
+/** A section's rows; also where a row is dropped into an empty section. */
+function DroppableList({ id, children }: { id: string; children: React.ReactNode }) {
+  const { setNodeRef } = useDroppable({ id });
+  return (
+    <ul className="reminders" ref={setNodeRef}>
+      {children}
+    </ul>
+  );
+}
+
+function SortableRow(props: Omit<React.ComponentProps<typeof ReminderRow>, "sortable">) {
+  const { setNodeRef, transform, transition, listeners, isDragging } = useSortable({
+    id: props.reminder.id,
+  });
+  return (
+    <ReminderRow
+      {...props}
+      sortable={{
+        setNodeRef,
+        style: { transform: CSS.Translate.toString(transform), transition },
+        listeners,
+        isDragging,
+      }}
+    />
   );
 }
