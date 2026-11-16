@@ -11,6 +11,7 @@ import {
 import type { Reminder } from "../shared/space";
 import { useStore } from "../store/StoreProvider";
 import { Icon } from "./Icon";
+import { Avatar } from "./People";
 import { timeLabel } from "../lib/dates";
 import { ReminderSheet } from "./ReminderSheet";
 import { useUi } from "./UiProvider";
@@ -45,6 +46,7 @@ export function ReminderRow({
   const { openSheet, toast } = useUi();
   const [expanded, setExpanded] = useState(false);
   const list = space.lists.find((l) => l.id === reminder.listId);
+  const assignee = space.members.find((m) => m.id === reminder.assignee);
   const now = nowLocal();
   const children = subtasks(space, reminder.id, true);
   const openChildren = children.filter((c) => !c.completed).length;
@@ -133,6 +135,7 @@ export function ReminderRow({
             <span className="url">{reminder.url.replace(/^https?:\/\/(www\.)?/, "")}</span>
           )}
         </button>
+        {assignee && <Avatar member={assignee} />}
         {children.length > 0 && (
           <button
             className={`expand${expanded ? " on" : ""}`}

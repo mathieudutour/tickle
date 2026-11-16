@@ -1,20 +1,23 @@
 import { useState } from "react";
-import { addFromEntry, type EntryDefaults } from "../lib/entry";
-import { parseQuickEntry } from "../lib/parse";
+import { addFromEntry, parseEntry, type EntryDefaults } from "../lib/entry";
+import { findMember } from "../lib/members";
 import { dueLabel, nowLocal, repeatLabel } from "../lib/views";
 import { useStore } from "../store/StoreProvider";
 import { Icon, type IconName } from "./Icon";
 
 /** What quick entry understood, shown under the field as you type. */
 export function EntryPreview({ text }: { text: string }) {
+  const { space } = useStore();
   const now = nowLocal();
-  const entry = parseQuickEntry(text, now);
+  const entry = parseEntry(space, text, now);
+  const assignee = entry.assignee ? findMember(space, entry.assignee) : undefined;
   const chips: [IconName, string][] = [];
   if (entry.due) chips.push(["calendar", dueLabel(entry, now)!]);
   if (entry.repeat) chips.push(["repeat", repeatLabel(entry)!]);
   if (entry.priority > 0)
     chips.push(["exclamation", ["", "Faible", "Moyenne", "Élevée"][entry.priority]!]);
   for (const tag of entry.tags) chips.push(["tag", tag]);
+  if (assignee) chips.push(["person", assignee.name]);
   if (!text.trim() || !chips.length) return null;
   return (
     <span className="preview" aria-live="polite">
@@ -45,7 +48,7 @@ export function QuickAdd({
   const list = space.lists.find((l) => l.id === defaults.listId);
 
   const add = () => {
-    const entry = parseQuickEntry(text, nowLocal());
+    const entry = parseEntry(space, text, nowLocal());
     if (!entry.title) return;
     dispatch(addFromEntry(space, entry, defaults));
     setText("");

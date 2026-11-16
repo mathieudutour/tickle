@@ -201,3 +201,53 @@ describe("alerts", () => {
     );
   });
 });
+
+describe("members", () => {
+  const lea = { id: "lea", name: "Léa", color: "pink" as const };
+  const tom = { id: "tom", name: "Tom", color: "blue" as const };
+
+  it("assigns reminders to members only, and unassigns a removed member's reminders", () => {
+    let space = apply(
+      freshSpace(TZ),
+      { type: "addMember", member: lea },
+      { type: "addMember", member: tom },
+      { type: "addReminder", reminder: reminder("a", { assignee: "lea" }) },
+      { type: "addReminder", reminder: reminder("b", { assignee: "nobody" }) },
+    );
+    expect(space.reminders.a!.assignee).toBe("lea");
+    expect(space.reminders.b!.assignee).toBeUndefined();
+    space = apply(space, { type: "updateReminder", id: "b", patch: { assignee: "tom" } });
+    expect(space.reminders.b!.assignee).toBe("tom");
+    space = apply(space, { type: "updateReminder", id: "b", patch: { assignee: "ghost" } });
+    expect(space.reminders.b!.assignee).toBeUndefined();
+    space = apply(space, { type: "removeMember", id: "lea" });
+    expect(space.members.map((m) => m.name)).toEqual(["Tom"]);
+    expect(space.reminders.a!.assignee).toBeUndefined();
+  });
+
+  it("keeps members through normalization, dropping assignees who aren't members", () => {
+    const space = normalizeSpace(
+      {
+        lists: [{ id: "rappels", name: "Rappels" }],
+        members: [lea, { id: "x" }],
+        reminders: { a: reminder("a", { assignee: "lea" }), b: reminder("b", { assignee: "tom" }) },
+      },
+      TZ,
+    );
+    expect(space.members).toEqual([lea]);
+    expect(space.reminders.a!.assignee).toBe("lea");
+    expect(space.reminders.b!.assignee).toBeUndefined();
+  });
+
+  it("only alerts the assignee's devices", () => {
+    const space = apply(
+      freshSpace(TZ),
+      { type: "addMember", member: lea },
+      {
+        type: "addReminder",
+        reminder: reminder("a", { assignee: "lea", due: { date: "2026-11-20", time: "18:00" } }),
+      },
+    );
+    expect(alertsOf(space)[0]).toMatchObject({ reminderId: "a", assignee: "lea" });
+  });
+});

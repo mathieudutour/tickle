@@ -91,8 +91,8 @@ body {
   margin: 0 auto;
   min-height: 100dvh;
   overflow-x: clip;
-  padding: env(safe-area-inset-top) max(16px, env(safe-area-inset-right)) calc(96px + env(safe-area-inset-bottom))
-    max(16px, env(safe-area-inset-left));
+  padding: env(safe-area-inset-top) max(16px, env(safe-area-inset-right))
+    calc(96px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
 }
 
 button,
@@ -816,16 +816,20 @@ h3 {
 }
 
 .page-indent[data-active] {
-  transform: scale(calc(0.93 + 0.07 * var(--progress))) translateY(calc((env(safe-area-inset-top) + 10px) * (1 - var(--progress))));
+  transform: scale(calc(0.93 + 0.07 * var(--progress)))
+    translateY(calc((env(safe-area-inset-top) + 10px) * (1 - var(--progress))));
   border-radius: calc(12px * (1 - var(--progress)));
   overflow: hidden;
 }
 
+/* Behind the page, and never in the way of taps: it only shows around the page while it's shrunk back. */
 .page-indent-background {
   position: fixed;
   inset: 0;
+  z-index: -1;
   background: #000;
   opacity: 0;
+  pointer-events: none;
 }
 
 .page-indent-background[data-active] {
@@ -1310,7 +1314,11 @@ input[role="switch"]:checked::after {
 
 code,
 pre {
-  font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+  font:
+    13px/1.4 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
 }
 
 /* ---------- Settings ---------- */
@@ -1463,6 +1471,75 @@ pre {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+/* ---------- People ---------- */
+
+.avatar {
+  flex: none;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin: 0 4px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.avatar.large {
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  font-size: 15px;
+}
+
+.avatar.add {
+  background: var(--fill);
+  color: var(--link);
+  font-size: 20px;
+  font-weight: 400;
+}
+
+.who-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin: -4px 0 16px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--link) 12%, var(--card));
+  text-align: left;
+  font-size: 15px;
+}
+
+.who-banner > span:first-child {
+  flex: 1;
+}
+
+.person-name {
+  flex: 1;
+  padding: 8px 0;
+}
+
+.me-badge {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--link);
+  padding: 0 8px;
+}
+
+.menu-item .name {
+  flex: 1;
+}
+
+.check-mark {
+  color: var(--link);
+  font-weight: 700;
 }
 
 /* ---------- Toast ---------- */

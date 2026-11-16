@@ -10,6 +10,8 @@ export interface QuickEntry {
   repeat?: Repeat;
   priority: Priority;
   tags: string[];
+  /** A name typed after @, resolved against the space's members by `addFromEntry`. */
+  assignee?: string;
 }
 
 const DAYS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
@@ -53,7 +55,12 @@ const nextWeekday = (today: string, day: number, strictlyAfter = false) => {
   return addDays(today, offset);
 };
 
-export function parseQuickEntry(input: string, now: { date: string; time: string }): QuickEntry {
+/** `isMember` tells which @names are people of the space; others stay in the title. Without it, any @name is taken. */
+export function parseQuickEntry(
+  input: string,
+  now: { date: string; time: string },
+  isMember: (name: string) => boolean = () => true,
+): QuickEntry {
   let rest = ` ${input} `;
   const take = (pattern: RegExp): RegExpMatchArray | null => {
     const match = rest.match(pattern);
@@ -63,11 +70,14 @@ export function parseQuickEntry(input: string, now: { date: string; time: string
   const today = now.date;
   const entry: QuickEntry = { title: "", priority: 0, tags: [] };
 
-  // Tags and priority (! to !!!).
+  // Tags, priority (! to !!!) and an assignee (@name).
   for (let tag = take(/(?<=\s)#([\p{L}\p{N}_-]+)/u); tag; tag = take(/(?<=\s)#([\p{L}\p{N}_-]+)/u))
     entry.tags.push(tag[1]!);
   const bangs = take(/(?<=\s)(!{1,3})(?=\s)/);
   if (bangs) entry.priority = bangs[1]!.length as Priority;
+  const mention = [...rest.matchAll(/(?<=\s)@([\p{L}\p{N}_-]+)/gu)].find((m) => isMember(m[1]!));
+  if (mention && take(new RegExp(`(?<=\\s)@${mention[1]}(?=\\s)`, "u")))
+    entry.assignee = mention[1]!;
 
   // Repeats. A weekly repeat on a named day also sets the first date.
   let date: string | undefined;

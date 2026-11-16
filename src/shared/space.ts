@@ -77,6 +77,8 @@ export interface Reminder {
   repeat?: Repeat;
   priority: Priority;
   tags: string[];
+  /** The member it's assigned to, if any. */
+  assignee?: string;
   completed: boolean;
   completedAt?: string;
   createdAt: string;
@@ -84,9 +86,20 @@ export interface Reminder {
   order: number;
 }
 
+/**
+ * Someone in the space, to assign reminders to. There are no accounts: each device remembers which member it belongs
+ * to (src/lib/me.ts).
+ */
+export interface Member {
+  id: string;
+  name: string;
+  color: Color;
+}
+
 export interface Space {
   lists: List[];
   reminders: Record<string, Reminder>;
+  members: Member[];
   /** Where the household lives: alerts follow its local time. */
   timeZone: string;
 }
@@ -100,6 +113,7 @@ export type ReminderPatch = Partial<{
   repeat: Repeat | null;
   priority: Priority;
   tags: string[];
+  assignee: string | null;
   listId: string;
   sectionId: string | null;
   parentId: string | null;
@@ -129,6 +143,10 @@ export type SpaceAction =
       nextDue?: Due;
     }
   | { type: "deleteReminder"; id: string }
+  | { type: "addMember"; member: Member }
+  | { type: "renameMember"; id: string; name: string }
+  /** Their reminders become unassigned. */
+  | { type: "removeMember"; id: string }
   | { type: "clearCompleted"; listId?: string }
   | { type: "setTimeZone"; timeZone: string };
 
@@ -139,6 +157,7 @@ export const freshSpace = (timeZone: string): Space => ({
     { id: DEFAULT_LIST_ID, name: "Rappels", color: "pink", icon: "📋", order: 0, sections: [] },
   ],
   reminders: {},
+  members: [],
   timeZone,
 });
 
@@ -230,6 +249,17 @@ function asList(value: unknown): List | undefined {
   };
 }
 
+function asMember(value: unknown): Member | undefined {
+  if (!isObject(value) || !isString(value.id) || !value.id) return undefined;
+  const name = text(value.name, 40).trim();
+  if (!name) return undefined;
+  return {
+    id: value.id,
+    name,
+    color: COLORS.includes(value.color as Color) ? (value.color as Color) : "blue",
+  };
+}
+
 function asReminder(value: unknown): Reminder | undefined {
   if (!isObject(value) || !isString(value.id) || !value.id || !isString(value.listId))
     return undefined;
@@ -254,6 +284,7 @@ function asReminder(value: unknown): Reminder | undefined {
     ...(repeat ? { repeat } : {}),
     priority: asPriority(value.priority),
     tags: asTags(value.tags),
+    ...(isString(value.assignee) && value.assignee ? { assignee: value.assignee } : {}),
     completed: value.completed === true,
     ...(value.completed === true && isString(value.completedAt)
       ? { completedAt: value.completedAt }
@@ -270,14 +301,25 @@ export function normalizeSpace(value: unknown, fallbackTimeZone: string): Space 
   const space: Space = {
     lists: lists.length ? lists : freshSpace(fallbackTimeZone).lists,
     reminders: {},
+    members: (Array.isArray(stored.members) ? stored.members : []).flatMap(
+      (m) => asMember(m) ?? [],
+    ),
     timeZone: isString(stored.timeZone) && stored.timeZone ? stored.timeZone : fallbackTimeZone,
   };
   const listIds = new Set(space.lists.map((l) => l.id));
   for (const raw of Object.values(isObject(stored.reminders) ? stored.reminders : {})) {
     const reminder = asReminder(raw);
-    if (reminder && listIds.has(reminder.listId)) space.reminders[reminder.id] = reminder;
+    if (reminder && listIds.has(reminder.listId))
+      space.reminders[reminder.id] = withKnownAssignee(space, reminder);
   }
   return space;
+}
+
+/** Drops an assignee who isn't (or is no longer) a member of the space. */
+function withKnownAssignee(space: Space, reminder: Reminder): Reminder {
+  if (!reminder.assignee || space.members.some((m) => m.id === reminder.assignee)) return reminder;
+  const { assignee: _, ...rest } = reminder;
+  return rest;
 }
 
 const ACTION_TYPES = new Set<SpaceAction["type"]>([
@@ -292,6 +334,9 @@ const ACTION_TYPES = new Set<SpaceAction["type"]>([
   "updateReminder",
   "setCompleted",
   "deleteReminder",
+  "addMember",
+  "renameMember",
+  "removeMember",
   "clearCompleted",
   "setTimeZone",
 ]);
@@ -332,6 +377,8 @@ function applyPatch(space: Space, reminder: Reminder, patch: ReminderPatch): Rem
     set("repeat", patch.repeat === null ? null : (asRepeat(patch.repeat) ?? reminder.repeat));
   if ("priority" in patch) next.priority = asPriority(patch.priority);
   if ("tags" in patch) next.tags = asTags(patch.tags);
+  if ("assignee" in patch)
+    set("assignee", space.members.some((m) => m.id === patch.assignee) ? patch.assignee : null);
   if ("order" in patch) next.order = finite(patch.order, reminder.order);
   if ("listId" in patch && space.lists.some((l) => l.id === patch.listId)) {
     next.listId = patch.listId;
@@ -467,7 +514,13 @@ export function spaceReducer(space: Space, action: SpaceAction): Space {
         reminder.parentId && !space.reminders[reminder.parentId]
           ? { ...reminder, parentId: undefined }
           : reminder;
-      return { ...space, reminders: { ...space.reminders, [placed.id]: asReminder(placed)! } };
+      return {
+        ...space,
+        reminders: {
+          ...space.reminders,
+          [placed.id]: withKnownAssignee(space, asReminder(placed)!),
+        },
+      };
     }
     case "updateReminder": {
       const reminder = space.reminders[action.id];
@@ -523,6 +576,35 @@ export function spaceReducer(space: Space, action: SpaceAction): Space {
       return space.reminders[action.id]
         ? { ...space, reminders: without(space.reminders, withDescendants(space, action.id)) }
         : space;
+    case "addMember": {
+      const member = asMember(action.member);
+      if (!member || space.members.some((m) => m.id === member.id) || space.members.length >= 20)
+        return space;
+      return { ...space, members: [...space.members, member] };
+    }
+    case "renameMember": {
+      const name = text(action.name, 40).trim();
+      if (!name) return space;
+      return {
+        ...space,
+        members: space.members.map((m) => (m.id === action.id ? { ...m, name } : m)),
+      };
+    }
+    case "removeMember": {
+      if (!space.members.some((m) => m.id === action.id)) return space;
+      const members = space.members.filter((m) => m.id !== action.id);
+      return {
+        ...space,
+        members,
+        reminders: Object.fromEntries(
+          Object.entries(space.reminders).map(([id, r]) => {
+            if (r.assignee !== action.id) return [id, r];
+            const { assignee: _, ...rest } = r;
+            return [id, rest];
+          }),
+        ),
+      };
+    }
     case "clearCompleted": {
       const gone = Object.values(space.reminders)
         .filter((r) => r.completed && (!action.listId || r.listId === action.listId))

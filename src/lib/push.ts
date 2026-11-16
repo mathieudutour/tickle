@@ -3,6 +3,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { isStandalone } from "./install";
+import { getMeId } from "./me";
 
 const STORAGE_KEY = "tickle/push";
 
@@ -10,6 +11,8 @@ const STORAGE_KEY = "tickle/push";
 interface Registered {
   key: string;
   id: string;
+  /** Who the device said it was when it registered: alerts for others' reminders skip it. */
+  memberId?: string;
 }
 
 export type PushState =
@@ -68,11 +71,11 @@ async function register(key: string, sub: PushSubscription): Promise<void> {
   const response = await fetch(`/api/spaces/${encodeURIComponent(key)}/push`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ subscription: sub.toJSON() }),
+    body: JSON.stringify({ subscription: sub.toJSON(), memberId: getMeId() ?? undefined }),
   });
   if (!response.ok) throw new Error(`push registration failed: ${response.status}`);
   const { id } = (await response.json()) as { id: string };
-  setRegistered({ key, id });
+  setRegistered({ key, id, ...(getMeId() ? { memberId: getMeId()! } : {}) });
 }
 
 async function unregister(value: Registered) {
@@ -136,4 +139,17 @@ export function usePush(spaceKey: string | null) {
   }, []);
 
   return { state, busy, enable, disable };
+}
+
+/** Registers again when the device says it's someone else, so the server sends it the right alerts. */
+export async function updatePushMember(memberId: string | undefined) {
+  const current = registered();
+  if (!current || current.memberId === memberId) return;
+  if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+  try {
+    // Same browser, same endpoint: the server replaces the old entry.
+    await register(current.key, await subscription());
+  } catch {
+    // Tried again on the next change or launch.
+  }
 }

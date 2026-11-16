@@ -3,6 +3,7 @@
 // changes sync to every device of the space.
 
 import { isDate, isTime, nowIn } from "../lib/dates";
+import { findMember } from "../lib/members";
 import { parseQuickEntry } from "../lib/parse";
 import {
   completeAction,
@@ -96,6 +97,11 @@ const reminderFields = {
   list: listRef,
   section: { type: "string", description: "A section name in the list." },
   parent_id: { type: "string", description: "Make it a subtask of this reminder." },
+  assignee: {
+    type: "string",
+    description:
+      "Assign it to a member of the space, by name (see get_overview). Only they get its alert.",
+  },
 };
 
 export function createTools(api: TickleApi): Tool[] {
@@ -111,6 +117,17 @@ export function createTools(api: TickleApi): Tool[] {
     if (!list)
       throw new ToolError(`No list "${ref}". Lists: ${space.lists.map((l) => l.name).join(", ")}.`);
     return list;
+  };
+  const findAssignee = (ref: unknown) => {
+    const space = api.getState();
+    const member = typeof ref === "string" ? findMember(space, ref) : undefined;
+    if (!member)
+      throw new ToolError(
+        space.members.length
+          ? `No member "${ref}". Members: ${space.members.map((m) => m.name).join(", ")}.`
+          : "This space has no members yet: they're added in the app's settings (Réglages › Personnes).",
+      );
+    return member;
   };
   const findReminder = (id: unknown): Reminder => {
     const reminder = typeof id === "string" ? api.getState().reminders[id] : undefined;
@@ -149,6 +166,7 @@ export function createTools(api: TickleApi): Tool[] {
       ...(r.early ? { early_minutes: r.early } : {}),
       ...(r.priority ? { priority: PRIORITIES[r.priority] } : {}),
       ...(r.tags.length ? { tags: r.tags } : {}),
+      ...(r.assignee ? { assignee: space.members.find((m) => m.id === r.assignee)?.name } : {}),
       ...(r.notes ? { notes: r.notes } : {}),
       ...(r.url ? { url: r.url } : {}),
       ...(r.parentId ? { parent_id: r.parentId } : {}),
@@ -229,6 +247,7 @@ export function createTools(api: TickleApi): Tool[] {
               sections: l.sections.map((s) => s.name),
             })),
           tags: tagsOf(space),
+          members: space.members.map((m) => m.name),
           due_today_or_overdue: dueBy(space, n.date).map(summary),
         };
       },
@@ -251,6 +270,10 @@ export function createTools(api: TickleApi): Tool[] {
           description: "Only completed reminders, most recent first.",
         },
         tag: { type: "string" },
+        assignee: {
+          type: "string",
+          description: "Only reminders assigned to this member (a name).",
+        },
         query: { type: "string", description: "Words to find in titles, notes, links and tags." },
         include_completed: { type: "boolean" },
         limit: { type: "integer", minimum: 1, maximum: 200, description: "Defaults to 50." },
@@ -273,6 +296,10 @@ export function createTools(api: TickleApi): Tool[] {
         }
         if (input.tag)
           reminders = reminders.filter((r) => r.tags.includes(String(input.tag).replace(/^#/, "")));
+        if (input.assignee) {
+          const member = findAssignee(input.assignee);
+          reminders = reminders.filter((r) => r.assignee === member.id);
+        }
         if (input.completed_only)
           reminders = reminders
             .filter((r) => r.completed)
@@ -340,6 +367,7 @@ export function createTools(api: TickleApi): Tool[] {
         const patch: ReminderPatch = { ...timing(input) };
         if (input.section) patch.sectionId = sectionId(list, input.section) ?? null;
         if (parent) patch.parentId = parent.id;
+        if (input.assignee) patch.assignee = findAssignee(input.assignee).id;
         Object.assign(patch, fields(input));
         if (Object.keys(patch).length) api.dispatch({ type: "updateReminder", id, patch });
         const created = api.getState().reminders[id]!;
@@ -351,7 +379,7 @@ export function createTools(api: TickleApi): Tool[] {
       name: "update_reminder",
       title: "Modifier un rappel",
       description:
-        "Change a reminder: only the given fields change. Use null to clear notes, url, due_date (clears the date, repeat and alert), due_time (makes it all-day), early_minutes, repeat, section or parent_id. Moving to another list takes its subtasks along.",
+        "Change a reminder: only the given fields change. Use null to clear notes, url, due_date (clears the date, repeat and alert), due_time (makes it all-day), early_minutes, repeat, section, parent_id or assignee. Moving to another list takes its subtasks along.",
       inputSchema: object(
         {
           id: { type: "string" },
@@ -364,6 +392,7 @@ export function createTools(api: TickleApi): Tool[] {
           repeat: { anyOf: [repeatSchema, { type: "null" }] },
           section: nullable(reminderFields.section),
           parent_id: nullable(reminderFields.parent_id),
+          assignee: nullable(reminderFields.assignee),
           when: {
             type: "string",
             description: "A French date phrase, instead of due_date and due_time.",
@@ -380,6 +409,8 @@ export function createTools(api: TickleApi): Tool[] {
         if ("section" in input) patch.sectionId = sectionId(list, input.section) ?? null;
         if ("parent_id" in input)
           patch.parentId = input.parent_id === null ? null : findReminder(input.parent_id).id;
+        if ("assignee" in input)
+          patch.assignee = input.assignee === null ? null : findAssignee(input.assignee).id;
         if (typeof input.title === "string" && !input.title.trim())
           throw new ToolError("A reminder needs a title.");
         api.dispatch({ type: "updateReminder", id: reminder.id, patch });

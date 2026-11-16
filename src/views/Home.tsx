@@ -4,10 +4,12 @@ import { EmptyState } from "../components/Art";
 import { Icon } from "../components/Icon";
 import { ListEditor } from "../components/ListEditor";
 import { NewReminderSheet } from "../components/NewReminderSheet";
+import { WhoAmIBanner } from "../components/People";
 import { ReminderRow } from "../components/ReminderRow";
 import { statusLabel } from "../components/Sharing";
 import { useUi } from "../components/UiProvider";
 import { hrefOf, type Route } from "../lib/router";
+import { isForMe, useMe } from "../lib/me";
 import { useDrag } from "../lib/useDrag";
 import { dueBy, nowLocal, openCount, search, tagsOf } from "../lib/views";
 import { useStore } from "../store/StoreProvider";
@@ -17,6 +19,7 @@ import { Header } from "./Header";
 export function Home({ navigate }: { navigate: (route: Route) => void }) {
   const { space, status, dispatch } = useStore();
   const { openSheet } = useUi();
+  const me = useMe(space);
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState(false);
   const container = useRef<HTMLUListElement>(null);
@@ -60,6 +63,7 @@ export function Home({ navigate }: { navigate: (route: Route) => void }) {
           enterKeyHint="search"
         />
         {/* Sync is silent while it works; this only shows when changes can't reach the others. */}
+        {space.members.length > 0 && !me && <WhoAmIBanner />}
         {status.connection === "offline" && status.joined && (
           <p className="sync-pill" role="status">
             {statusLabel(status)}
@@ -87,7 +91,9 @@ export function Home({ navigate }: { navigate: (route: Route) => void }) {
                   <Icon name="calendar" />
                 </span>
                 <span className="name">Aujourd’hui</span>
-                <span className="count">{dueBy(space, nowLocal().date).length}</span>
+                <span className="count">
+                  {dueBy(space, nowLocal().date).filter((r) => isForMe(r, me)).length}
+                </span>
                 <Icon name="chevronRight" className="chev" />
               </a>
             </li>

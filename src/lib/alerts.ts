@@ -6,6 +6,8 @@ export const ALL_DAY_TIME = "09:00";
 
 export interface Alert {
   reminderId: string;
+  /** Only this member's devices get it, when set. */
+  assignee?: string;
   /** Identifies this occurrence: a repeating reminder alerts again on its next date. */
   key: string;
   at: number;
@@ -24,6 +26,7 @@ export function alertsOf(space: Space): Alert[] {
     const list = space.lists.find((l) => l.id === reminder.listId);
     alerts.push({
       reminderId: reminder.id,
+      ...(reminder.assignee ? { assignee: reminder.assignee } : {}),
       key: `${reminder.id}@${reminder.due.date}T${time}-${reminder.early ?? 0}`,
       at,
       title: reminder.title || "Rappel",

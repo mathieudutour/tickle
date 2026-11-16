@@ -40,6 +40,8 @@ interface Agent {
 interface Device {
   id: string;
   subscription: PushSubscription;
+  /** The member using this device: it only gets their reminders and the unassigned ones. */
+  memberId?: string;
   createdAt: string;
 }
 
@@ -56,7 +58,11 @@ async function sha256(text: string): Promise<string> {
 
 const unauthorized = () =>
   Response.json(
-    { jsonrpc: "2.0", id: null, error: { code: -32001, message: "Invalid or revoked Tickle agent token" } },
+    {
+      jsonrpc: "2.0",
+      id: null,
+      error: { code: -32001, message: "Invalid or revoked Tickle agent token" },
+    },
     { status: 401, headers: { "www-authenticate": 'Bearer realm="tickle"' } },
   );
 
@@ -89,7 +95,11 @@ export class Space extends DurableObject<Env> {
   }
 
   /** Creates the space from the first device's lists. Returns `null` if it already exists. */
-  async create(space: unknown, fallbackTimeZone: string, origin: string): Promise<{ version: number } | null> {
+  async create(
+    space: unknown,
+    fallbackTimeZone: string,
+    origin: string,
+  ): Promise<{ version: number } | null> {
     if (this.server) return null;
     await this.ctx.storage.put({ [CHECKED_KEY]: Date.now(), [CONTACT_KEY]: origin });
     await this.save({ space: normalizeSpace(space, fallbackTimeZone), version: 0, recent: [] });
@@ -103,7 +113,8 @@ export class Space extends DurableObject<Env> {
     if (agents) return this.manageAgents(request, agents[1]);
     const push = url.pathname.match(/\/push(?:\/([A-Za-z0-9_-]+))?$/);
     if (push) return this.manageDevices(request, push[1]);
-    if (request.headers.get("Upgrade") !== "websocket") return new Response("Expected a WebSocket", { status: 426 });
+    if (request.headers.get("Upgrade") !== "websocket")
+      return new Response("Expected a WebSocket", { status: 426 });
     const { 0: client, 1: server } = new WebSocketPair();
     this.ctx.acceptWebSocket(server);
     return new Response(null, { status: 101, webSocket: client });
@@ -146,17 +157,32 @@ export class Space extends DurableObject<Env> {
   private async manageAgents(request: Request, id: string | undefined): Promise<Response> {
     if (!this.server) return Response.json({ error: "unknown space" }, { status: 404 });
     const agents = (await this.ctx.storage.get<Agent[]>(AGENTS_KEY)) ?? [];
-    const visible = (a: Agent) => ({ id: a.id, label: a.label, createdAt: a.createdAt, lastUsedAt: a.lastUsedAt });
+    const visible = (a: Agent) => ({
+      id: a.id,
+      label: a.label,
+      createdAt: a.createdAt,
+      lastUsedAt: a.lastUsedAt,
+    });
     if (request.method === "GET" && !id) return Response.json(agents.map(visible));
     if (request.method === "POST" && !id) {
-      if (agents.length >= MAX_AGENTS) return Response.json({ error: "too many agents" }, { status: 409 });
+      if (agents.length >= MAX_AGENTS)
+        return Response.json({ error: "too many agents" }, { status: 409 });
       const body = (await request.json().catch(() => ({}))) as { label?: unknown };
-      const label = (typeof body.label === "string" ? body.label.trim() : "").slice(0, 40) || "Agent";
+      const label =
+        (typeof body.label === "string" ? body.label.trim() : "").slice(0, 40) || "Agent";
       const secret = randomId(32);
-      const agent: Agent = { id: randomId(6), label, hash: await sha256(secret), createdAt: new Date().toISOString() };
+      const agent: Agent = {
+        id: randomId(6),
+        label,
+        hash: await sha256(secret),
+        createdAt: new Date().toISOString(),
+      };
       await this.ctx.storage.put(AGENTS_KEY, [...agents, agent]);
       // The token routes to this space without revealing its key; it's shown once and never stored.
-      return Response.json({ ...visible(agent), token: `${this.ctx.id.toString()}.${secret}` }, { status: 201 });
+      return Response.json(
+        { ...visible(agent), token: `${this.ctx.id.toString()}.${secret}` },
+        { status: 201 },
+      );
     }
     if (request.method === "DELETE" && id) {
       await this.ctx.storage.put(
@@ -170,8 +196,11 @@ export class Space extends DurableObject<Env> {
 
   /** The space's tools over MCP, for an agent holding a token. Its changes reach the devices like their own. */
   private async mcp(request: Request): Promise<Response> {
-    if (request.method !== "POST") return new Response(null, { status: 405, headers: { allow: "POST" } });
-    const [, secret] = (request.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").split(".");
+    if (request.method !== "POST")
+      return new Response(null, { status: 405, headers: { allow: "POST" } });
+    const [, secret] = (request.headers.get("authorization") ?? "")
+      .replace(/^Bearer\s+/i, "")
+      .split(".");
     const agents = (await this.ctx.storage.get<Agent[]>(AGENTS_KEY)) ?? [];
     const hash = secret ? await sha256(secret) : "";
     const agent = agents.find((a) => a.hash === hash);
@@ -223,13 +252,29 @@ export class Space extends DurableObject<Env> {
     if (!this.server) return Response.json({ error: "unknown space" }, { status: 404 });
     const devices = (await this.ctx.storage.get<Device[]>(DEVICES_KEY)) ?? [];
     if (request.method === "POST" && !id) {
-      const body = (await request.json().catch(() => null)) as { subscription?: unknown } | null;
-      if (!isSubscription(body?.subscription)) return Response.json({ error: "invalid subscription" }, { status: 400 });
+      const body = (await request.json().catch(() => null)) as {
+        subscription?: unknown;
+        memberId?: unknown;
+      } | null;
+      if (!isSubscription(body?.subscription))
+        return Response.json({ error: "invalid subscription" }, { status: 400 });
       const { endpoint, keys } = body.subscription;
       // The same browser subscribing again replaces its old entry.
-      const others = devices.filter((d) => d.subscription.endpoint !== endpoint).slice(-(MAX_DEVICES - 1));
-      const device: Device = { id: randomId(9), subscription: { endpoint, keys }, createdAt: new Date().toISOString() };
-      await this.ctx.storage.put({ [DEVICES_KEY]: [...others, device], [CONTACT_KEY]: new URL(request.url).origin });
+      const others = devices
+        .filter((d) => d.subscription.endpoint !== endpoint)
+        .slice(-(MAX_DEVICES - 1));
+      const memberId =
+        typeof body.memberId === "string" && body.memberId.length <= 64 ? body.memberId : undefined;
+      const device: Device = {
+        id: randomId(9),
+        subscription: { endpoint, keys },
+        ...(memberId ? { memberId } : {}),
+        createdAt: new Date().toISOString(),
+      };
+      await this.ctx.storage.put({
+        [DEVICES_KEY]: [...others, device],
+        [CONTACT_KEY]: new URL(request.url).origin,
+      });
       return Response.json({ id: device.id }, { status: 201 });
     }
     if (request.method === "DELETE" && id) {
@@ -254,28 +299,37 @@ export class Space extends DurableObject<Env> {
     if (!due.length || !devices.length) return;
 
     const { privateJWK } = await this.env.KEYS.get(this.env.KEYS.idFromName("vapid")).vapid();
-    const contact = (await this.ctx.storage.get<string>(CONTACT_KEY)) ?? "mailto:tickle@example.com";
+    const contact =
+      (await this.ctx.storage.get<string>(CONTACT_KEY)) ?? "mailto:tickle@example.com";
     const gone = new Set<string>();
     await Promise.all(
-      devices.flatMap((device) =>
-        due.map(async (alert) => {
-          try {
-            const { endpoint, headers, body } = await buildPushHTTPRequest({
-              privateJWK,
-              subscription: device.subscription,
-              message: {
-                payload: { title: alert.title, body: alert.body, tag: alert.key, reminderId: alert.reminderId },
-                adminContact: contact,
-                options: { ttl: 6 * 60 * 60, urgency: "high" },
-              },
-            });
-            const response = await fetch(endpoint, { method: "POST", headers, body });
-            // The browser unsubscribed, or the app was removed: stop sending to it.
-            if (response.status === 404 || response.status === 410) gone.add(device.id);
-          } catch (error) {
-            console.error("push failed", error);
-          }
-        }),
+      // An assigned reminder only alerts its member's devices (and those that haven't said who they are).
+      due.flatMap((alert) =>
+        devices
+          .filter((d) => !alert.assignee || !d.memberId || d.memberId === alert.assignee)
+          .map(async (device) => {
+            try {
+              const { endpoint, headers, body } = await buildPushHTTPRequest({
+                privateJWK,
+                subscription: device.subscription,
+                message: {
+                  payload: {
+                    title: alert.title,
+                    body: alert.body,
+                    tag: alert.key,
+                    reminderId: alert.reminderId,
+                  },
+                  adminContact: contact,
+                  options: { ttl: 6 * 60 * 60, urgency: "high" },
+                },
+              });
+              const response = await fetch(endpoint, { method: "POST", headers, body });
+              // The browser unsubscribed, or the app was removed: stop sending to it.
+              if (response.status === 404 || response.status === 410) gone.add(device.id);
+            } catch (error) {
+              console.error("push failed", error);
+            }
+          }),
       ),
     );
     if (gone.size)
@@ -305,7 +359,9 @@ export class Space extends DurableObject<Env> {
     const checkedUntil = (await this.ctx.storage.get<number>(CHECKED_KEY)) ?? Date.now();
     const expiresAt = (await this.ctx.storage.get<number>(EXPIRES_KEY)) ?? Date.now() + EXPIRY_MS;
     const next = alertsOf(this.server.space).find((a) => a.at > checkedUntil);
-    await this.ctx.storage.setAlarm(Math.max(Date.now(), Math.min(expiresAt, next?.at ?? Infinity)));
+    await this.ctx.storage.setAlarm(
+      Math.max(Date.now(), Math.min(expiresAt, next?.at ?? Infinity)),
+    );
   }
 
   /** Opening the space pushes its expiry back (at most once a day, to keep storage writes down). */
@@ -335,14 +391,18 @@ export class Space extends DurableObject<Env> {
 /** The VAPID key pair every space signs its push notifications with: made on first use and kept here. */
 export class Keys extends DurableObject<Env> {
   async vapid(): Promise<{ publicKey: string; privateJWK: JsonWebKey }> {
-    const stored = await this.ctx.storage.get<{ publicKey: string; privateJWK: JsonWebKey }>("vapid");
+    const stored = await this.ctx.storage.get<{ publicKey: string; privateJWK: JsonWebKey }>(
+      "vapid",
+    );
     if (stored) return stored;
     const pair = (await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, [
       "sign",
       "verify",
     ])) as CryptoKeyPair;
     const privateJWK = (await crypto.subtle.exportKey("jwk", pair.privateKey)) as JsonWebKey;
-    const raw = new Uint8Array((await crypto.subtle.exportKey("raw", pair.publicKey)) as ArrayBuffer);
+    const raw = new Uint8Array(
+      (await crypto.subtle.exportKey("raw", pair.publicKey)) as ArrayBuffer,
+    );
     const publicKey = btoa(String.fromCharCode(...raw))
       .replace(/\+/g, "-")
       .replace(/\//g, "_")

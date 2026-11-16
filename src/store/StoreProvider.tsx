@@ -16,7 +16,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const store = getAppStore();
   const space = useSyncExternalStore(store.subscribe, store.getState);
   const status = useSyncExternalStore(store.subscribe, store.getStatus);
-  const value = useMemo(() => ({ space, status, dispatch: store.dispatch, sync: store }), [space, status, store]);
+  const value = useMemo(
+    () => ({ space, status, dispatch: store.dispatch, sync: store }),
+    [space, status, store],
+  );
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
 

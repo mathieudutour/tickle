@@ -55,6 +55,14 @@ describe("parseQuickEntry", () => {
     expect(parse("Facture tous les mois")).toMatchObject({ repeat: { freq: "monthly" } });
   });
 
+  it("reads an assignee", () => {
+    expect(parse("Sortir le chien @Léa demain")).toMatchObject({
+      title: "Sortir le chien",
+      assignee: "Léa",
+      due: { date: "2026-11-16" },
+    });
+  });
+
   it("reads tags and priority", () => {
     expect(parse("Acheter du lait #courses #urgent !!")).toEqual({
       title: "Acheter du lait",

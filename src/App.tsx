@@ -2,6 +2,8 @@ import { useEffect } from "react";
 import { ReminderSheet } from "./components/ReminderSheet";
 import { JoinSheet } from "./components/Sharing";
 import { useUi } from "./components/UiProvider";
+import { useMe } from "./lib/me";
+import { updatePushMember } from "./lib/push";
 import { takeHashParam, useRoute } from "./lib/router";
 import { useStore } from "./store/StoreProvider";
 import { Home } from "./views/Home";
@@ -12,8 +14,12 @@ import { TodayView } from "./views/TodayView";
 
 export function App() {
   const [route, navigate] = useRoute();
-  const { sync } = useStore();
+  const { sync, space } = useStore();
+  const me = useMe(space);
   const { openSheet, toast } = useUi();
+
+  // Alerts for reminders assigned to someone else skip this device once it says who it is.
+  useEffect(() => void updatePushMember(me?.id), [me?.id]);
 
   // What the agents do, and other news from the space, shows as a toast.
   useEffect(() => {

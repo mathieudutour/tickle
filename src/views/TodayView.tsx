@@ -1,7 +1,9 @@
 import { EmptyState } from "../components/Art";
+import { WhoAmIBanner } from "../components/People";
 import { QuickAdd } from "../components/QuickAdd";
 import { ReminderRow } from "../components/ReminderRow";
 import type { Route } from "../lib/router";
+import { isForMe, useMe } from "../lib/me";
 import { useLinger } from "../lib/useLinger";
 import { dueBy, nowLocal } from "../lib/views";
 import type { Reminder } from "../shared/space";
@@ -13,11 +15,12 @@ export function TodayView({ navigate }: { navigate: (route: Route) => void }) {
   const { space } = useStore();
   const [lingering, linger] = useLinger();
   const today = nowLocal().date;
+  const me = useMe(space);
   const defaultList = [...space.lists].sort((a, b) => a.order - b.order)[0]!.id;
 
   // Just-completed reminders stay where they were for a moment.
   const reminders = [
-    ...dueBy(space, today),
+    ...dueBy(space, today).filter((r) => isForMe(r, me)),
     ...[...lingering].flatMap((id) => {
       const r = space.reminders[id];
       return r?.completed && r.due && r.due.date <= today ? [r] : [];
@@ -55,6 +58,7 @@ export function TodayView({ navigate }: { navigate: (route: Route) => void }) {
   return (
     <div style={{ "--accent": "var(--link)" } as React.CSSProperties}>
       <Header back={() => navigate({ name: "home" })} title="Aujourd’hui" accent />
+      {space.members.length > 0 && !me && <WhoAmIBanner />}
       {groups.map((group) => (
         <section key={group.key} className="group-list">
           <h3 className={`section-title static${group.late ? " late" : ""}`}>{group.title}</h3>

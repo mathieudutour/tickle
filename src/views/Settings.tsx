@@ -1,6 +1,7 @@
 import { Art } from "../components/Art";
 import { Agents } from "../components/Agents";
 import { InstallHint } from "../components/InstallHint";
+import { PeopleSettings } from "../components/People";
 import { Sharing } from "../components/Sharing";
 import { useUi } from "../components/UiProvider";
 import { usePush } from "../lib/push";
@@ -72,6 +73,11 @@ export function Settings({ navigate }: { navigate: (route: Route) => void }) {
             </>
           )}
         </p>
+      </section>
+
+      <section className="card pad">
+        <h2>Personnes</h2>
+        <PeopleSettings />
       </section>
 
       <section className="card pad">

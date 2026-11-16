@@ -1,5 +1,11 @@
 import { isStandalone, keepStorage } from "../lib/install";
-import { freshSpace, normalizeSpace, spaceReducer, type Space, type SpaceAction } from "../shared/space";
+import {
+  freshSpace,
+  normalizeSpace,
+  spaceReducer,
+  type Space,
+  type SpaceAction,
+} from "../shared/space";
 import {
   receive,
   visibleState,
@@ -32,7 +38,8 @@ const RECONNECT_DELAYS = [1, 2, 5, 10, 30].map((s) => s * 1000);
 const PING_EVERY_MS = 20_000;
 const PONG_TIMEOUT_MS = 8_000;
 
-export const localTimeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Paris";
+export const localTimeZone = () =>
+  Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Paris";
 
 function load(): Persisted {
   try {
@@ -80,7 +87,11 @@ export class AppStore {
     const stored = load();
     this.key = stored.sync?.key ?? null;
     this.joined = stored.sync?.joined ?? false;
-    this.sync = { confirmed: stored.space, version: stored.sync?.version ?? 0, pending: stored.sync?.pending ?? [] };
+    this.sync = {
+      confirmed: stored.space,
+      version: stored.sync?.version ?? 0,
+      pending: stored.sync?.pending ?? [],
+    };
     this.update(false);
     // Back on the network or on screen: check the connection, or create the space if it doesn't exist yet.
     addEventListener("online", () => this.checkConnection());
@@ -169,13 +180,18 @@ export class AppStore {
   private connect() {
     if (!this.key || this.socket) return;
     const protocol = location.protocol === "https:" ? "wss" : "ws";
-    const socket = new WebSocket(`${protocol}://${location.host}/api/spaces/${encodeURIComponent(this.key)}/sync`);
+    const socket = new WebSocket(
+      `${protocol}://${location.host}/api/spaces/${encodeURIComponent(this.key)}/sync`,
+    );
     this.socket = socket;
     this.setConnection("connecting");
     socket.onopen = () => {
       this.send({ t: "hello" });
       clearInterval(this.pingTimer);
-      this.pingTimer = setInterval(() => document.visibilityState === "visible" && this.ping(), PING_EVERY_MS);
+      this.pingTimer = setInterval(
+        () => document.visibilityState === "visible" && this.ping(),
+        PING_EVERY_MS,
+      );
     };
     socket.onmessage = (event) => {
       if (this.socket !== socket) return;
@@ -267,7 +283,12 @@ export class AppStore {
     const persisted: Persisted = {
       space: this.sync.confirmed,
       sync: this.key
-        ? { key: this.key, version: this.sync.version, pending: this.sync.pending, joined: this.joined }
+        ? {
+            key: this.key,
+            version: this.sync.version,
+            pending: this.sync.pending,
+            joined: this.joined,
+          }
         : undefined,
     };
     try {

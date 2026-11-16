@@ -7,6 +7,7 @@ import { useStore } from "../store/StoreProvider";
 import { QuickAdd } from "./QuickAdd";
 import { ReminderRow } from "./ReminderRow";
 import { RowIcon, type IconName } from "./Icon";
+import { PersonSheet } from "./People";
 import { Sheet, SheetHeader } from "./Sheet";
 import { useUi } from "./UiProvider";
 
@@ -34,6 +35,8 @@ const EARLY: [number, string][] = [
   [2880, "2 jours avant"],
   [10080, "1 semaine avant"],
 ];
+
+const ADD_PERSON = "add-person";
 
 const PRIORITIES = ["Aucune", "Faible", "Moyenne", "Élevée"];
 
@@ -70,6 +73,7 @@ export function ReminderSheet({ id, onClose }: { id: string; onClose: () => void
 
   const update = (patch: ReminderPatch) => dispatch({ type: "updateReminder", id, patch });
   const list = space.lists.find((l) => l.id === reminder.listId);
+  const assignee = space.members.find((m) => m.id === reminder.assignee);
   const today = nowLocal().date;
   const children = subtasks(space, id, true);
   const parent = reminder.parentId ? space.reminders[reminder.parentId] : undefined;
@@ -245,6 +249,37 @@ export function ReminderSheet({ id, onClose }: { id: string; onClose: () => void
                   {label}
                 </option>
               ))}
+            </select>
+          </label>
+          <label className="select-row">
+            <span className="label">
+              <RowIcon name="person" color={assignee?.color ?? "gray"} />
+              Assigné à
+            </span>
+            <select
+              value={reminder.assignee ?? ""}
+              onChange={(e) => {
+                if (e.target.value !== ADD_PERSON)
+                  return update({ assignee: e.target.value || null });
+                // A new person, then back to this reminder, assigned to them.
+                openSheet((close) => (
+                  <PersonSheet
+                    onClose={close}
+                    onAdded={(member) => {
+                      dispatch({ type: "updateReminder", id, patch: { assignee: member.id } });
+                      openSheet((closeAgain) => <ReminderSheet id={id} onClose={closeAgain} />);
+                    }}
+                  />
+                ));
+              }}
+            >
+              <option value="">Personne</option>
+              {space.members.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+              <option value={ADD_PERSON}>Ajouter une personne…</option>
             </select>
           </label>
           {!parent && (

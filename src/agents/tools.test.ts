@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { freshSpace, spaceReducer, type Space } from "../shared/space";
+import { freshSpace, spaceReducer, type Space, type SpaceAction } from "../shared/space";
 import { createTools } from "./tools";
 
 function setup() {
@@ -16,7 +16,12 @@ function setup() {
   });
   const call = (name: string, input: Record<string, unknown> = {}) =>
     tools.find((t) => t.name === name)!.execute(input) as Promise<Record<string, any>>;
-  return { call, notices, state: () => space };
+  return {
+    call,
+    notices,
+    state: () => space,
+    dispatch: (action: SpaceAction) => (space = spaceReducer(space, action)),
+  };
 }
 
 describe("agent tools", () => {
@@ -90,5 +95,25 @@ describe("agent tools", () => {
     expect(await call("get_overview")).toMatchObject({
       today: "2026-11-15",
     });
+  });
+
+  it("assigns reminders to members by name and filters by them", async () => {
+    const { call, dispatch } = setup();
+    await expect(call("add_reminder", { title: "Pain", assignee: "Léa" })).rejects.toThrow(
+      /no members yet/,
+    );
+    dispatch({ type: "addMember", member: { id: "lea", name: "Léa", color: "pink" } });
+    const pain = await call("add_reminder", { title: "Pain", assignee: "lea" });
+    expect(pain).toMatchObject({ assignee: "Léa" });
+    await call("add_reminder", { title: "Lait" });
+    expect(
+      (await call("list_reminders", { assignee: "Léa" })).reminders.map(
+        (r: { title: string }) => r.title,
+      ),
+    ).toEqual(["Pain"]);
+    expect(
+      (await call("update_reminder", { id: pain.id, assignee: null })).assignee,
+    ).toBeUndefined();
+    expect(await call("get_overview")).toMatchObject({ members: ["Léa"] });
   });
 });

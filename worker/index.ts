@@ -11,7 +11,8 @@ function newKey(): string {
     .replace(/=+$/, "");
 }
 
-const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { "cache-control": "no-store" } });
+const json = (body: unknown, status = 200) =>
+  Response.json(body, { status, headers: { "cache-control": "no-store" } });
 
 const MAX_BODY_BYTES = 1024 * 1024;
 
@@ -20,12 +21,17 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === "/api/spaces" && request.method === "POST") {
-      if (Number(request.headers.get("content-length") ?? 0) > MAX_BODY_BYTES) return json({ error: "too large" }, 413);
+      if (Number(request.headers.get("content-length") ?? 0) > MAX_BODY_BYTES)
+        return json({ error: "too large" }, 413);
       const body = (await request.json().catch(() => null)) as { space?: unknown } | null;
       if (!body?.space) return json({ error: "missing space" }, 400);
       const key = newKey();
       const timeZone = (request as { cf?: { timezone?: string } }).cf?.timezone ?? "Europe/Paris";
-      const created = await env.SPACE.get(env.SPACE.idFromName(key)).create(body.space, timeZone, url.origin);
+      const created = await env.SPACE.get(env.SPACE.idFromName(key)).create(
+        body.space,
+        timeZone,
+        url.origin,
+      );
       if (!created) return json({ error: "conflict" }, 409);
       return json({ key, version: created.version }, 201);
     }
@@ -33,7 +39,10 @@ export default {
     // The public key browsers subscribe to push notifications with.
     if (url.pathname === "/api/push/key" && request.method === "GET") {
       const { publicKey } = await env.KEYS.get(env.KEYS.idFromName("vapid")).vapid();
-      return Response.json({ publicKey }, { headers: { "cache-control": "public, max-age=86400" } });
+      return Response.json(
+        { publicKey },
+        { headers: { "cache-control": "public, max-age=86400" } },
+      );
     }
 
     const space = url.pathname.match(
@@ -51,7 +60,11 @@ export default {
         id = env.SPACE.idFromString(objectId ?? "");
       } catch {
         return Response.json(
-          { jsonrpc: "2.0", id: null, error: { code: -32001, message: "Missing or invalid Tickle agent token" } },
+          {
+            jsonrpc: "2.0",
+            id: null,
+            error: { code: -32001, message: "Missing or invalid Tickle agent token" },
+          },
           { status: 401, headers: { "www-authenticate": 'Bearer realm="tickle"' } },
         );
       }

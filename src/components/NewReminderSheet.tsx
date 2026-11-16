@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { addFromEntry } from "../lib/entry";
-import { parseQuickEntry } from "../lib/parse";
+import { addFromEntry, parseEntry } from "../lib/entry";
 import { nowLocal } from "../lib/views";
 import { useStore } from "../store/StoreProvider";
 import { autoGrow } from "../lib/autoGrow";
@@ -19,7 +18,7 @@ export function NewReminderSheet({ listId, onClose }: { listId?: string; onClose
   const [list, setList] = useState(
     listId && space.lists.some((l) => l.id === listId) ? listId : lists[0]!.id,
   );
-  const entry = parseQuickEntry(text, nowLocal());
+  const entry = parseEntry(space, text, nowLocal());
 
   const add = (details: boolean) => {
     if (!entry.title) return;
