@@ -15,8 +15,16 @@ import { SheetPresence } from "./Sheet";
 
 type SheetRenderer = (close: () => void) => ReactNode;
 
+/** A button in the toast: « Annuler » for a plain function. */
+export type ToastAction = (() => void) | { label: string; run: () => void };
+
 interface Ui {
-  toast: (message: string, undo?: () => void) => void;
+  toast: (message: string, action?: ToastAction) => void;
+  /**
+   * Runs `then` now, or once the open sheet has closed: a toast's button can't be tapped while a sheet is open (it
+   * makes the rest of the page inert).
+   */
+  afterSheet: (then: () => void) => void;
   copy: (text: string) => Promise<void>;
   /** Shows one bottom sheet at a time, replacing any open one. */
   openSheet: (render: SheetRenderer) => void;
@@ -25,7 +33,10 @@ interface Ui {
 const UiContext = createContext<Ui | null>(null);
 
 export function UiProvider({ children }: { children: ReactNode }) {
-  const [message, setMessage] = useState<{ text: string; undo?: () => void } | null>(null);
+  const [message, setMessage] = useState<{
+    text: string;
+    action?: { label: string; run: () => void };
+  } | null>(null);
   const [visible, setVisible] = useState(false);
   const timer = useRef<number>(undefined);
   // The sheet stays mounted while it animates out: `open` turns false first, then it's dropped once closed.
@@ -34,19 +45,36 @@ export function UiProvider({ children }: { children: ReactNode }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const pane = useMemo(() => ({ selectedId, show: setSelectedId }), [selectedId]);
 
-  const toast = useCallback((text: string, undo?: () => void) => {
-    setMessage({ text, undo });
+  const toast = useCallback((text: string, action?: ToastAction) => {
+    setMessage({
+      text,
+      action: typeof action === "function" ? { label: "Annuler", run: action } : action,
+    });
     setVisible(true);
     clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => setVisible(false), undo ? 4000 : 2200);
+    // Long enough to read and reach the button when there is one.
+    timer.current = window.setTimeout(() => setVisible(false), action ? 5000 : 2200);
   }, []);
 
   const closeSheet = useCallback(() => setOpen(false), []);
-  const presence = useMemo(() => ({ open, onClosed: () => setSheet(null) }), [open]);
+  const waiting = useRef<(() => void)[]>([]);
+  const sheetShown = useRef(false);
+  sheetShown.current = !!sheet;
+  const presence = useMemo(
+    () => ({
+      open,
+      onClosed: () => {
+        setSheet(null);
+        for (const then of waiting.current.splice(0)) then();
+      },
+    }),
+    [open],
+  );
 
   const ui = useMemo<Ui>(
     () => ({
       toast,
+      afterSheet: (then) => (sheetShown.current ? waiting.current.push(then) : then()),
       copy: async (text) => toast((await copyText(text)) ? "Copié" : "Copie impossible ici"),
       // A new key replays the opening animation when a sheet replaces another.
       openSheet: (render) => {
@@ -74,14 +102,14 @@ export function UiProvider({ children }: { children: ReactNode }) {
         </Drawer.Provider>
         <div className={`toast${visible ? " on" : ""}`} role="status" aria-live="polite">
           <span>{message?.text}</span>
-          {message?.undo && (
+          {message?.action && (
             <button
               onClick={() => {
-                message.undo?.();
+                message.action?.run();
                 setVisible(false);
               }}
             >
-              Annuler
+              {message.action.label}
             </button>
           )}
         </div>

@@ -13,6 +13,19 @@ interface Registered {
   id: string;
   /** Who the device said it was when it registered: alerts for others' reminders skip it. */
   memberId?: string;
+  /** When it asked for the morning summary (HH:MM), if it did. */
+  summaryAt?: string;
+}
+
+const SUMMARY_KEY = "tickle/summary";
+
+/** This device's morning summary time (HH:MM), or null when it's off. */
+export const getSummaryAt = () => localStorage.getItem(SUMMARY_KEY);
+
+export async function setSummaryAt(time: string | null) {
+  if (time) localStorage.setItem(SUMMARY_KEY, time);
+  else localStorage.removeItem(SUMMARY_KEY);
+  await updatePushRegistration();
 }
 
 export type PushState =
@@ -41,7 +54,8 @@ const setRegistered = (value: Registered | null) =>
     ? localStorage.setItem(STORAGE_KEY, JSON.stringify(value))
     : localStorage.removeItem(STORAGE_KEY);
 
-function currentState(): PushState {
+/** Whether this device can, does, or could get alerts. */
+export function pushState(): PushState {
   const supported =
     "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
   if (!supported) return isIos() && !isStandalone() ? "needs-install" : "unsupported";
@@ -71,11 +85,20 @@ async function register(key: string, sub: PushSubscription): Promise<void> {
   const response = await fetch(`/api/spaces/${encodeURIComponent(key)}/push`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ subscription: sub.toJSON(), memberId: getMeId() ?? undefined }),
+    body: JSON.stringify({
+      subscription: sub.toJSON(),
+      memberId: getMeId() ?? undefined,
+      summaryAt: getSummaryAt() ?? undefined,
+    }),
   });
   if (!response.ok) throw new Error(`push registration failed: ${response.status}`);
   const { id } = (await response.json()) as { id: string };
-  setRegistered({ key, id, ...(getMeId() ? { memberId: getMeId()! } : {}) });
+  setRegistered({
+    key,
+    id,
+    ...(getMeId() ? { memberId: getMeId()! } : {}),
+    ...(getSummaryAt() ? { summaryAt: getSummaryAt()! } : {}),
+  });
 }
 
 async function unregister(value: Registered) {
@@ -89,7 +112,7 @@ async function unregister(value: Registered) {
  * registers with the space; joining or leaving a space moves the registration along.
  */
 export function usePush(spaceKey: string | null) {
-  const [state, setState] = useState<PushState>(currentState);
+  const [state, setState] = useState<PushState>(pushState);
   const [busy, setBusy] = useState(false);
 
   // Follow the device to its new space.
@@ -105,7 +128,7 @@ export function usePush(spaceKey: string | null) {
       } catch {
         // Tried again on the next launch.
       }
-      setState(currentState());
+      setState(pushState());
     })();
   }, [spaceKey]);
 
@@ -113,15 +136,10 @@ export function usePush(spaceKey: string | null) {
     if (!spaceKey) return false;
     setBusy(true);
     try {
-      if ((await Notification.requestPermission()) !== "granted") return false;
-      await register(spaceKey, await subscription());
-      return true;
-    } catch (error) {
-      console.warn("push", error);
-      return false;
+      return await enablePush(spaceKey);
     } finally {
       setBusy(false);
-      setState(currentState());
+      setState(pushState());
     }
   }, [spaceKey]);
 
@@ -135,16 +153,36 @@ export function usePush(spaceKey: string | null) {
       .catch(() => null);
     await sub?.unsubscribe().catch(() => false);
     setBusy(false);
-    setState(currentState());
+    setState(pushState());
   }, []);
 
   return { state, busy, enable, disable };
 }
 
-/** Registers again when the device says it's someone else, so the server sends it the right alerts. */
-export async function updatePushMember(memberId: string | undefined) {
+/** Asks for permission (it must run from a tap) and registers this device for the space's alerts. */
+export async function enablePush(spaceKey: string): Promise<boolean> {
+  try {
+    if ((await Notification.requestPermission()) !== "granted") return false;
+    await register(spaceKey, await subscription());
+    return true;
+  } catch (error) {
+    console.warn("push", error);
+    return false;
+  }
+}
+
+/**
+ * Registers again when what the server needs to know changed: who the device says it is (alerts for others' reminders
+ * skip it) or its morning summary time.
+ */
+export async function updatePushRegistration() {
   const current = registered();
-  if (!current || current.memberId === memberId) return;
+  if (!current) return;
+  if (
+    current.memberId === (getMeId() ?? undefined) &&
+    current.summaryAt === (getSummaryAt() ?? undefined)
+  )
+    return;
   if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
   try {
     // Same browser, same endpoint: the server replaces the old entry.

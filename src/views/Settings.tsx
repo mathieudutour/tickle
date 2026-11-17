@@ -4,7 +4,9 @@ import { InstallHint } from "../components/InstallHint";
 import { PeopleSettings } from "../components/People";
 import { Sharing } from "../components/Sharing";
 import { useUi } from "../components/UiProvider";
-import { usePush } from "../lib/push";
+import { timeLabel } from "../lib/dates";
+import { getSummaryAt, setSummaryAt, usePush } from "../lib/push";
+import { useState } from "react";
 import type { Route } from "../lib/router";
 import { localTimeZone } from "../store/store";
 import { useStore } from "../store/StoreProvider";
@@ -50,13 +52,16 @@ export function Settings({ navigate }: { navigate: (route: Route) => void }) {
           </button>
         )}
         {push.state === "on" && (
-          <button
-            className="cta ghost slim"
-            disabled={push.busy}
-            onClick={() => void push.disable()}
-          >
-            Désactiver sur cet appareil
-          </button>
+          <>
+            <MorningSummary />
+            <button
+              className="cta ghost slim"
+              disabled={push.busy}
+              onClick={() => void push.disable()}
+            >
+              Désactiver sur cet appareil
+            </button>
+          </>
         )}
         <p className="note spaced">
           Fuseau horaire des alertes : <b>{space.timeZone.replace(/_/g, " ")}</b>
@@ -100,7 +105,83 @@ export function Settings({ navigate }: { navigate: (route: Route) => void }) {
         </p>
       </section>
 
+      {matchMedia("(hover: hover)").matches && (
+        <section className="card pad">
+          <h2>Raccourcis clavier</h2>
+          <dl className="shortcuts">
+            {SHORTCUTS.map(([keys, what]) => (
+              <div key={keys}>
+                <dt>
+                  <kbd>{keys}</kbd>
+                </dt>
+                <dd>{what}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
+
       <InstallHint />
+    </div>
+  );
+}
+
+const SHORTCUTS: [string, string][] = [
+  ["N", "Nouveau rappel"],
+  ["↑ ↓", "Passer d’un rappel à l’autre"],
+  ["Espace", "Cocher ou décocher"],
+  ["⌫", "Supprimer (avec «\u00a0Annuler\u00a0»)"],
+  ["⌥↑ ⌥↓", "Déplacer dans la liste"],
+  ["Échap", "Fermer les détails"],
+];
+
+const SUMMARY_TIMES = [
+  "06:00",
+  "06:30",
+  "07:00",
+  "07:30",
+  "08:00",
+  "08:30",
+  "09:00",
+  "09:30",
+  "10:00",
+];
+
+/** Opt-in, per device: « 3 rappels aujourd’hui, dont 1 en retard » each morning, at its time. */
+function MorningSummary() {
+  const [at, setAt] = useState(getSummaryAt);
+  const choose = (time: string | null) => {
+    setAt(time);
+    void setSummaryAt(time);
+  };
+  return (
+    <div className="group summary-setting">
+      <label className="switch-row">
+        <span className="label">
+          <span className="label-text">
+            Résumé du matin
+            <span className="sublabel">Les rappels du jour et ceux en retard</span>
+          </span>
+        </span>
+        <input
+          type="checkbox"
+          role="switch"
+          checked={!!at}
+          onChange={(e) => choose(e.target.checked ? "08:00" : null)}
+        />
+      </label>
+      {at && (
+        <label className="select-row">
+          <span className="label">Heure</span>
+          <select value={at} onChange={(e) => choose(e.target.value)}>
+            {SUMMARY_TIMES.map((time) => (
+              <option key={time} value={time}>
+                {timeLabel(time)}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
     </div>
   );
 }

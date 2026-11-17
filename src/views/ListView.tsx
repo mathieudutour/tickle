@@ -26,6 +26,7 @@ import { Sheet, SheetHeader } from "../components/Sheet";
 import { QuickAdd } from "../components/QuickAdd";
 import { ReminderRow } from "../components/ReminderRow";
 import { useUi } from "../components/UiProvider";
+import { useUndoMove } from "../components/useReminderActions";
 import type { Route } from "../lib/router";
 import { useLinger } from "../lib/useLinger";
 import { listReminders, newId, orderBetween } from "../lib/views";
@@ -68,6 +69,7 @@ function useShowCompleted(listId: string): [boolean, (show: boolean) => void] {
 export function ListView({ id, navigate }: { id: string; navigate: (route: Route) => void }) {
   const { space, dispatch } = useStore();
   const { openSheet } = useUi();
+  const undoMove = useUndoMove();
   const list = space.lists.find((l) => l.id === id);
   const [showCompleted, setShowCompleted] = useShowCompleted(id);
   const [lingering, linger] = useLinger();
@@ -149,8 +151,9 @@ export function ListView({ id, navigate }: { id: string; navigate: (route: Route
     );
     // Dropped where it started: nothing to save.
     const unchanged = containerOf(id, base) === key && base[key]!.indexOf(id) === index;
-    if (!unchanged)
-      dispatch({ type: "updateReminder", id, patch: { order, sectionId: sectionId ?? null } });
+    if (unchanged) return;
+    dispatch({ type: "updateReminder", id, patch: { order, sectionId: sectionId ?? null } });
+    undoMove(moved);
   };
 
   if (!list) {

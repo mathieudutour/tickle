@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { alertsOf } from "../lib/alerts";
+import { alertsOf, nextSummaryAt, summaryOf } from "../lib/alerts";
 import { zonedInstant } from "../lib/dates";
 import {
   freshSpace,
@@ -273,5 +273,45 @@ describe("older spaces", () => {
       member: { id: "lea", name: "Léa", color: "pink" },
     });
     expect(added.members).toHaveLength(1);
+  });
+});
+
+describe("morning summary", () => {
+  const space = apply(
+    freshSpace(TZ),
+    { type: "addMember", member: { id: "lea", name: "Léa", color: "pink" } },
+    { type: "addReminder", reminder: reminder("pain", { due: { date: "2026-11-17" } }) },
+    { type: "addReminder", reminder: reminder("facture", { due: { date: "2026-11-15" } }) },
+    {
+      type: "addReminder",
+      reminder: reminder("chien", { due: { date: "2026-11-17", time: "18:00" }, assignee: "lea" }),
+    },
+    { type: "addReminder", reminder: reminder("demain", { due: { date: "2026-11-18" } }) },
+  );
+
+  it("counts today's and overdue reminders, for the device's member", () => {
+    expect(summaryOf(space, "2026-11-17")).toEqual({
+      title: "3 rappels aujourd’hui, dont 1 en retard",
+      body: "facture · chien · pain",
+    });
+    expect(summaryOf(space, "2026-11-17", "tom")?.title).toBe(
+      "2 rappels aujourd’hui, dont 1 en retard",
+    );
+    expect(summaryOf(freshSpace(TZ), "2026-11-17")).toBeNull();
+  });
+
+  it("is due at its time today, or tomorrow once sent or long past", () => {
+    const at = (date: string, time: string) => zonedInstant(date, time, TZ);
+    const now = at("2026-11-17", "07:00");
+    expect(nextSummaryAt(TZ, "08:00", undefined, now)).toBe(at("2026-11-17", "08:00"));
+    expect(nextSummaryAt(TZ, "08:00", "2026-11-17", now)).toBe(at("2026-11-18", "08:00"));
+    // Turned on at noon: tomorrow, not right away.
+    expect(nextSummaryAt(TZ, "08:00", undefined, at("2026-11-17", "12:00"))).toBe(
+      at("2026-11-18", "08:00"),
+    );
+    // A few minutes late (the alarm woke late): still today.
+    expect(nextSummaryAt(TZ, "08:00", undefined, at("2026-11-17", "08:10"))).toBe(
+      at("2026-11-17", "08:00"),
+    );
   });
 });

@@ -1,7 +1,8 @@
 import { buildPushHTTPRequest, type PushSubscription } from "@pushforge/builder";
 import { DurableObject } from "cloudflare:workers";
 import { createTools } from "../src/agents/tools";
-import { alertsOf } from "../src/lib/alerts";
+import { alertsOf, nextSummaryAt, summaryOf } from "../src/lib/alerts";
+import { isTime, nowIn } from "../src/lib/dates";
 import { newId } from "../src/lib/views";
 import { handleMcp } from "../src/shared/mcp";
 import { normalizeSpace } from "../src/shared/space";
@@ -42,6 +43,10 @@ interface Device {
   subscription: PushSubscription;
   /** The member using this device: it only gets their reminders and the unassigned ones. */
   memberId?: string;
+  /** When it wants the morning summary (HH:MM, the space's time), if it does. */
+  summaryAt?: string;
+  /** The last day (YYYY-MM-DD) it got one. */
+  lastSummary?: string;
   createdAt: string;
 }
 
@@ -260,6 +265,7 @@ export class Space extends DurableObject<Env> {
       const body = (await request.json().catch(() => null)) as {
         subscription?: unknown;
         memberId?: unknown;
+        summaryAt?: unknown;
       } | null;
       if (!isSubscription(body?.subscription))
         return Response.json({ error: "invalid subscription" }, { status: 400 });
@@ -270,16 +276,23 @@ export class Space extends DurableObject<Env> {
         .slice(-(MAX_DEVICES - 1));
       const memberId =
         typeof body.memberId === "string" && body.memberId.length <= 64 ? body.memberId : undefined;
+      const summaryAt = isTime(body.summaryAt) ? body.summaryAt : undefined;
+      // Registering again keeps the day of its last summary, so changing who it is doesn't send a second one.
+      const previous = devices.find((d) => d.subscription.endpoint === endpoint);
       const device: Device = {
         id: randomId(9),
         subscription: { endpoint, keys },
         ...(memberId ? { memberId } : {}),
+        ...(summaryAt ? { summaryAt } : {}),
+        ...(summaryAt && previous?.lastSummary ? { lastSummary: previous.lastSummary } : {}),
         createdAt: new Date().toISOString(),
       };
       await this.ctx.storage.put({
         [DEVICES_KEY]: [...others, device],
         [CONTACT_KEY]: new URL(request.url).origin,
       });
+      // Its morning summary may now be the next thing due.
+      await this.scheduleAlarm();
       return Response.json({ id: device.id }, { status: 201 });
     }
     if (request.method === "DELETE" && id) {
@@ -301,47 +314,86 @@ export class Space extends DurableObject<Env> {
     );
     await this.ctx.storage.put(CHECKED_KEY, now);
     const devices = (await this.ctx.storage.get<Device[]>(DEVICES_KEY)) ?? [];
-    if (!due.length || !devices.length) return;
+    // An assigned reminder only alerts its member's devices (and those that haven't said who they are).
+    await this.push(
+      due.flatMap((alert) =>
+        devices
+          .filter((d) => !alert.assignee || !d.memberId || d.memberId === alert.assignee)
+          .map((device) => ({
+            device,
+            payload: {
+              title: alert.title,
+              body: alert.body,
+              tag: alert.key,
+              reminderId: alert.reminderId,
+            },
+          })),
+      ),
+    );
+  }
 
+  /** Sends the morning summary to the devices whose time has come, once a day each. */
+  private async sendSummaries(now: number) {
+    if (!this.server) return;
+    const timeZone = this.server.space.timeZone;
+    const today = nowIn(timeZone, new Date(now)).date;
+    const devices = (await this.ctx.storage.get<Device[]>(DEVICES_KEY)) ?? [];
+    const due = devices.filter(
+      (d) => d.summaryAt && nextSummaryAt(timeZone, d.summaryAt, d.lastSummary, now) <= now,
+    );
+    if (!due.length) return;
+    const space = this.server.space;
+    await this.push(
+      due.flatMap((device) => {
+        const summary = summaryOf(space, today, device.memberId);
+        // Nothing for today: no summary rather than an empty one.
+        return summary
+          ? [{ device, payload: { ...summary, tag: "summary", url: "/#aujourdhui" } }]
+          : [];
+      }),
+    );
+    const sent = new Set(due.map((d) => d.id));
+    const current = (await this.ctx.storage.get<Device[]>(DEVICES_KEY)) ?? [];
+    await this.ctx.storage.put(
+      DEVICES_KEY,
+      current.map((d) => (sent.has(d.id) ? { ...d, lastSummary: today } : d)),
+    );
+  }
+
+  /** Sends push messages, and forgets the devices that no longer accept them. */
+  private async push(messages: { device: Device; payload: Record<string, string> }[]) {
+    if (!messages.length) return;
     const { privateJWK } = await this.env.KEYS.get(this.env.KEYS.idFromName("vapid")).vapid();
     const contact =
       (await this.ctx.storage.get<string>(CONTACT_KEY)) ?? "mailto:tickle@example.com";
     const gone = new Set<string>();
     await Promise.all(
-      // An assigned reminder only alerts its member's devices (and those that haven't said who they are).
-      due.flatMap((alert) =>
-        devices
-          .filter((d) => !alert.assignee || !d.memberId || d.memberId === alert.assignee)
-          .map(async (device) => {
-            try {
-              const { endpoint, headers, body } = await buildPushHTTPRequest({
-                privateJWK,
-                subscription: device.subscription,
-                message: {
-                  payload: {
-                    title: alert.title,
-                    body: alert.body,
-                    tag: alert.key,
-                    reminderId: alert.reminderId,
-                  },
-                  adminContact: contact,
-                  options: { ttl: 6 * 60 * 60, urgency: "high" },
-                },
-              });
-              const response = await fetch(endpoint, { method: "POST", headers, body });
-              // The browser unsubscribed, or the app was removed: stop sending to it.
-              if (response.status === 404 || response.status === 410) gone.add(device.id);
-            } catch (error) {
-              console.error("push failed", error);
-            }
-          }),
-      ),
+      messages.map(async ({ device, payload }) => {
+        try {
+          const { endpoint, headers, body } = await buildPushHTTPRequest({
+            privateJWK,
+            subscription: device.subscription,
+            message: {
+              payload,
+              adminContact: contact,
+              options: { ttl: 6 * 60 * 60, urgency: "high" },
+            },
+          });
+          const response = await fetch(endpoint, { method: "POST", headers, body });
+          // The browser unsubscribed, or the app was removed: stop sending to it.
+          if (response.status === 404 || response.status === 410) gone.add(device.id);
+        } catch (error) {
+          console.error("push failed", error);
+        }
+      }),
     );
-    if (gone.size)
+    if (gone.size) {
+      const devices = (await this.ctx.storage.get<Device[]>(DEVICES_KEY)) ?? [];
       await this.ctx.storage.put(
         DEVICES_KEY,
         devices.filter((d) => !gone.has(d.id)),
       );
+    }
   }
 
   // ---------- Storage and alarm ----------
@@ -355,17 +407,24 @@ export class Space extends DurableObject<Env> {
       return;
     }
     await this.sendDueAlerts(now);
+    await this.sendSummaries(now);
     await this.scheduleAlarm();
   }
 
-  /** One alarm does both jobs: the next alert to send, or else deleting the space once it has expired. */
+  /** One alarm does every job: the next alert or morning summary to send, or else deleting the space once expired. */
   private async scheduleAlarm() {
     if (!this.server) return;
     const checkedUntil = (await this.ctx.storage.get<number>(CHECKED_KEY)) ?? Date.now();
     const expiresAt = (await this.ctx.storage.get<number>(EXPIRES_KEY)) ?? Date.now() + EXPIRY_MS;
     const next = alertsOf(this.server.space).find((a) => a.at > checkedUntil);
+    const now = Date.now();
+    const timeZone = this.server.space.timeZone;
+    const devices = (await this.ctx.storage.get<Device[]>(DEVICES_KEY)) ?? [];
+    const summaries = devices.flatMap((d) =>
+      d.summaryAt ? [nextSummaryAt(timeZone, d.summaryAt, d.lastSummary, now)] : [],
+    );
     await this.ctx.storage.setAlarm(
-      Math.max(Date.now(), Math.min(expiresAt, next?.at ?? Infinity)),
+      Math.max(now, Math.min(expiresAt, next?.at ?? Infinity, ...summaries)),
     );
   }
 

@@ -76,7 +76,10 @@ export function useRoute(): [Route, (route: Route) => void] {
   }, []);
 
   // A new screen starts at the top (before it's painted, so the transition captures it there).
-  useLayoutEffect(() => scrollTo(0, 0), [hash]);
+  // In braces: newer Chrome makes scrollTo return a promise, which React would take for a cleanup function.
+  useLayoutEffect(() => {
+    scrollTo(0, 0);
+  }, [hash]);
   const navigate = useCallback((route: Route) => {
     location.hash = hrefOf(route);
   }, []);

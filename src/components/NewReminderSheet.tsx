@@ -6,6 +6,7 @@ import { autoGrow } from "../lib/autoGrow";
 import { RowIcon } from "./Icon";
 import { EntryPreview } from "./QuickAdd";
 import { useOpenReminder } from "./ReminderSheet";
+import { useAlertPrompt } from "./useAlertPrompt";
 import { useWide } from "../lib/useWide";
 import { Sheet, SheetHeader } from "./Sheet";
 import { useUi } from "./UiProvider";
@@ -15,6 +16,7 @@ export function NewReminderSheet({ listId, onClose }: { listId?: string; onClose
   const { space, dispatch } = useStore();
   const { toast } = useUi();
   const openReminder = useOpenReminder();
+  const promptAlerts = useAlertPrompt();
   const wide = useWide();
   const lists = [...space.lists].sort((a, b) => a.order - b.order);
   const [text, setText] = useState("");
@@ -27,6 +29,7 @@ export function NewReminderSheet({ listId, onClose }: { listId?: string; onClose
     if (!entry.title) return;
     const action = addFromEntry(space, entry, { listId: list });
     dispatch(action);
+    promptAlerts(entry.due?.time);
     if (details) {
       // In the pane beside the list on a wide screen, in a sheet otherwise.
       if (wide) onClose();

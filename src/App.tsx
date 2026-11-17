@@ -2,9 +2,10 @@ import { useContext, useEffect, useRef } from "react";
 import { ReminderPane, ReminderSheet } from "./components/ReminderSheet";
 import { DetailsPane } from "./lib/detailsPane";
 import { JoinSheet } from "./components/Sharing";
+import { useKeyboardShortcuts } from "./components/useKeyboardShortcuts";
 import { useUi } from "./components/UiProvider";
 import { useMe } from "./lib/me";
-import { updatePushMember } from "./lib/push";
+import { updatePushRegistration } from "./lib/push";
 import { hrefOf, takeHashParam, useRoute } from "./lib/router";
 import { useWide, WIDE } from "./lib/useWide";
 import { useStore } from "./store/StoreProvider";
@@ -20,6 +21,7 @@ export function App() {
   const me = useMe(space);
   const { openSheet, toast } = useUi();
   const wide = useWide();
+  useKeyboardShortcuts(route);
   // On a wide screen, the reminder shown in the right pane. Moving to another screen clears it, unless a reminder was
   // asked for on the way (a notification opens its list and selects it).
   const { selectedId: selected, show: setSelected } = useContext(DetailsPane);
@@ -31,7 +33,7 @@ export function App() {
   }, [routeKey]);
 
   // Alerts for reminders assigned to someone else skip this device once it says who it is.
-  useEffect(() => void updatePushMember(me?.id), [me?.id]);
+  useEffect(() => void updatePushRegistration(), [me?.id]);
 
   // What the agents do, and other news from the space, shows as a toast.
   useEffect(() => {

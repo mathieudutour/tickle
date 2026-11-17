@@ -14,15 +14,18 @@ self.addEventListener("push", (event) => {
       tag: alert.tag,
       icon: "/icon-192.png",
       badge: "/badge-96.png",
-      data: { reminderId: alert.reminderId },
+      data: { reminderId: alert.reminderId, url: alert.url },
     }),
   );
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const id = event.notification.data && event.notification.data.reminderId;
-  const url = new URL(id ? `/#rappel=${encodeURIComponent(id)}` : "/", self.location.origin).href;
+  const data = event.notification.data || {};
+  // A reminder opens its details; the morning summary opens « Aujourd’hui ».
+  const path =
+    data.url || (data.reminderId ? `/#rappel=${encodeURIComponent(data.reminderId)}` : "/");
+  const url = new URL(path, self.location.origin).href;
   event.waitUntil(
     (async () => {
       const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });

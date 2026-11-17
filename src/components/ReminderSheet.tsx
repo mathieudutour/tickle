@@ -12,6 +12,7 @@ import { RowIcon, type IconName } from "./Icon";
 import { PersonSheet } from "./People";
 import { Sheet, SheetHeader } from "./Sheet";
 import { useUi } from "./UiProvider";
+import { useAlertPrompt } from "./useAlertPrompt";
 import { useDeleteReminder } from "./useDeleteReminder";
 
 const REPEATS: [string, string][] = [
@@ -100,6 +101,7 @@ function ReminderDetails({
   const { space, dispatch } = useStore();
   const { openSheet } = useUi();
   const openReminder = useOpenReminder();
+  const promptAlerts = useAlertPrompt();
   const deleteReminder = useDeleteReminder();
   const reminder = space.reminders[id];
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -210,10 +212,14 @@ function ReminderDetails({
                 type="time"
                 value={reminder.due.time}
                 label={reminder.due.time && timeLabel(reminder.due.time)}
-                onPick={(time) => update({ due: { date: reminder.due!.date, time } })}
-                onToggle={(on) =>
-                  update({ due: { date: reminder.due!.date, ...(on ? { time: "09:00" } : {}) } })
-                }
+                onPick={(time) => {
+                  update({ due: { date: reminder.due!.date, time } });
+                  promptAlerts(time);
+                }}
+                onToggle={(on) => {
+                  update({ due: { date: reminder.due!.date, ...(on ? { time: "09:00" } : {}) } });
+                  if (on) promptAlerts("09:00");
+                }}
               />
               <label className="select-row">
                 <span className="label">

@@ -7,3 +7,5 @@ dev-dist
 .dev.vars
 # Illustration originals (large); the app ships compressed copies
 art-sources
+playwright-report
+test-results

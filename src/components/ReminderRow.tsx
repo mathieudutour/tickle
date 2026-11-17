@@ -7,15 +7,7 @@ import {
   type PanInfo,
 } from "motion/react";
 import { useContext, useEffect, useRef, useState, type CSSProperties } from "react";
-import {
-  completeAction,
-  dueLabel,
-  isOverdue,
-  newId,
-  nowLocal,
-  repeatLabel,
-  subtasks,
-} from "../lib/views";
+import { dueLabel, isOverdue, nowLocal, repeatLabel, subtasks } from "../lib/views";
 import type { Reminder } from "../shared/space";
 import { useStore } from "../store/StoreProvider";
 import { Icon } from "./Icon";
@@ -24,8 +16,8 @@ import { timeLabel } from "../lib/dates";
 import { DetailsPane } from "../lib/detailsPane";
 import { useWide } from "../lib/useWide";
 import { useOpenReminder } from "./ReminderSheet";
-import { useUi } from "./UiProvider";
 import { useDeleteReminder } from "./useDeleteReminder";
+import { useToggleReminder } from "./useReminderActions";
 
 interface Props {
   reminder: Reminder;
@@ -63,8 +55,7 @@ export function ReminderRow({
   swipeable = true,
   depth = 0,
 }: Props) {
-  const { space, dispatch } = useStore();
-  const { toast } = useUi();
+  const { space } = useStore();
   const deleteReminder = useDeleteReminder();
   const [expanded, setExpanded] = useState(false);
   const list = space.lists.find((l) => l.id === reminder.listId);
@@ -81,16 +72,14 @@ export function ReminderRow({
   const repeat = repeatLabel(reminder);
 
   const [pop, setPop] = useState(false);
+  const toggleReminder = useToggleReminder();
   const toggle = () => {
-    const completed = !reminder.completed;
-    dispatch(completeAction(reminder, completed, newId));
-    if (completed) {
+    if (!reminder.completed) {
       setPop(true);
       setTimeout(() => setPop(false), 400);
       onCompleted?.(reminder.id);
-      if (reminder.repeat && reminder.due)
-        toast(`${reminder.title} : prochaine fois ${repeat?.toLowerCase() ?? ""}`);
     }
+    toggleReminder(reminder);
   };
 
   // « Courses · Demain, 9 h · ↻ Toutes les semaines #maison »: parts separated by dots, then the tags.

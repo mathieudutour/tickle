@@ -4,6 +4,7 @@ import { findMember } from "../lib/members";
 import { dueLabel, nowLocal, repeatLabel } from "../lib/views";
 import { useStore } from "../store/StoreProvider";
 import { Icon, type IconName } from "./Icon";
+import { useAlertPrompt } from "./useAlertPrompt";
 
 /** What quick entry understood, shown under the field as you type. */
 export function EntryPreview({ text }: { text: string }) {
@@ -43,6 +44,7 @@ export function QuickAdd({
   label?: string;
 }) {
   const { space, dispatch } = useStore();
+  const promptAlerts = useAlertPrompt();
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
   const list = space.lists.find((l) => l.id === defaults.listId);
@@ -51,6 +53,7 @@ export function QuickAdd({
     const entry = parseEntry(space, text, nowLocal());
     if (!entry.title) return;
     dispatch(addFromEntry(space, entry, defaults));
+    promptAlerts(entry.due?.time);
     setText("");
   };
 
