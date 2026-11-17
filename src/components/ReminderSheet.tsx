@@ -12,39 +12,13 @@ import { RowIcon, type IconName } from "./Icon";
 import { PersonSheet } from "./People";
 import { Sheet, SheetHeader } from "./Sheet";
 import { useUi } from "./UiProvider";
+import { capitalize, EARLY, REPEATS, repeatValue, showPicker } from "../lib/reminderOptions";
 import { useAlertPrompt } from "./useAlertPrompt";
 import { useDeleteReminder } from "./useDeleteReminder";
-
-const REPEATS: [string, string][] = [
-  ["", "Jamais"],
-  ["daily:1", "Tous les jours"],
-  ["weekdays:1", "En semaine"],
-  ["weekends:1", "Le week-end"],
-  ["weekly:1", "Toutes les semaines"],
-  ["weekly:2", "Toutes les 2 semaines"],
-  ["monthly:1", "Tous les mois"],
-  ["monthly:3", "Tous les 3 mois"],
-  ["monthly:6", "Tous les 6 mois"],
-  ["yearly:1", "Tous les ans"],
-];
-
-const EARLY: [number, string][] = [
-  [0, "À l’heure"],
-  [5, "5 min avant"],
-  [15, "15 min avant"],
-  [30, "30 min avant"],
-  [60, "1 h avant"],
-  [120, "2 h avant"],
-  [1440, "La veille"],
-  [2880, "2 jours avant"],
-  [10080, "1 semaine avant"],
-];
 
 const ADD_PERSON = "add-person";
 
 const PRIORITIES = ["Aucune", "Faible", "Moyenne", "Élevée"];
-
-const repeatValue = (repeat?: Repeat) => (repeat ? `${repeat.freq}:${repeat.interval}` : "");
 
 /** Opens a reminder's details: in the right pane on a wide screen, in a sheet otherwise. */
 export function useOpenReminder() {
@@ -449,17 +423,6 @@ function ReminderDetails({
     </Frame>
   );
 }
-
-const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
-
-/** Opens the browser's own picker; a tap on the transparent input does the same on iOS. */
-const showPicker = (event: React.MouseEvent<HTMLInputElement>) => {
-  try {
-    event.currentTarget.showPicker();
-  } catch {
-    // Not supported, or already open: the tap itself opens it.
-  }
-};
 
 /**
  * A date or time row as in Reminders: a switch turns it on, the chosen value shows in the tint under the title, and a

@@ -9,6 +9,7 @@ test.beforeEach(async ({ page }) => {
 test("details close with a swipe down, Escape or « OK »", async ({ page }) => {
   const open = async () => {
     await row(page, "Payer la cantine").locator(".body").click();
+    await page.getByRole("button", { name: "Tous les détails" }).click();
     await expect(page.locator(".page-indent[data-active]")).toHaveCount(1);
   };
 
@@ -52,6 +53,7 @@ test("a new reminder from home: its field has focus, and French dates are unders
 test("details show date and time as in Reminders", async ({ page }) => {
   await addReminders(page, ["Dentiste demain 18h"]);
   await row(page, "Dentiste").locator(".body").click();
+  await page.getByRole("button", { name: "Tous les détails" }).click();
   const sheet = page.locator(".sheet");
   await expect(sheet.locator(".picker-row", { hasText: "Date" })).toContainText("Demain");
   await expect(sheet.locator(".picker-row", { hasText: "Heure" })).toContainText("18 h");

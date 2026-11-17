@@ -58,9 +58,22 @@ test("swiping left shows « Détails » and « Supprimer »; a full swipe delete
   await expect.poll(() => rowTitles(page)).not.toContain("Deux");
 });
 
-test("a tap opens the details", async ({ page }) => {
+test("a tap edits a reminder in place; (i) opens its details", async ({ page }) => {
   await row(page, "Cinq").locator(".body").click();
-  await expect(page.locator(".sheet .title-field")).toHaveValue("Cinq");
+  const title = page.locator(".reminder.editing .inline-title");
+  await expect(title).toBeFocused();
+  await page.keyboard.type(" et demi");
+  await page.getByRole("button", { name: "Ajouter une date" }).click();
+  await expect(page.locator(".reminder.editing .tool", { hasText: "Aujourd’hui" })).toBeVisible();
+
+  // A tap elsewhere saves and ends editing.
+  await page.locator(".large-title").click();
+  await expect(page.locator(".reminder.editing")).toHaveCount(0);
+  await expect(row(page, "Cinq et demi").locator(".meta")).toContainText("Aujourd’hui");
+
+  await row(page, "Cinq et demi").locator(".body").click();
+  await page.getByRole("button", { name: "Tous les détails" }).click();
+  await expect(page.locator(".sheet .title-field")).toHaveValue("Cinq et demi");
 });
 
 test("lists move by their handle in « Modifier »", async ({ page }) => {

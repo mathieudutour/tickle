@@ -7,6 +7,7 @@ import {
   type PanInfo,
 } from "motion/react";
 import { useContext, useEffect, useRef, useState, type CSSProperties } from "react";
+import { flushSync } from "react-dom";
 import { dueLabel, isOverdue, nowLocal, repeatLabel, subtasks } from "../lib/views";
 import type { Reminder } from "../shared/space";
 import { useStore } from "../store/StoreProvider";
@@ -15,6 +16,8 @@ import { Avatar } from "./People";
 import { timeLabel } from "../lib/dates";
 import { DetailsPane } from "../lib/detailsPane";
 import { useWide } from "../lib/useWide";
+import { setEditingId, useEditingId } from "../lib/inlineEdit";
+import { InlineEditor } from "./InlineEditor";
 import { useOpenReminder } from "./ReminderSheet";
 import { useDeleteReminder } from "./useDeleteReminder";
 import { useToggleReminder } from "./useReminderActions";
@@ -111,17 +114,43 @@ export function ReminderRow({
     )),
   ];
 
-  const swipe = useSwipeActions(swipeable);
+  const editingId = useEditingId();
+  const swipe = useSwipeActions(swipeable && editingId !== reminder.id);
   const openReminder = useOpenReminder();
   const wide = useWide();
   const selected = useContext(DetailsPane).selectedId === reminder.id && wide;
   const openDetails = () => openReminder(reminder.id);
 
+  // On a phone, a tap edits the reminder in place (InlineEditor); its (i) opens the details. Focusing the title in
+  // the same tap is what lets iOS open the keyboard.
+  const editing = editingId === reminder.id && !wide;
+  const titleRef = useRef<HTMLInputElement>(null);
+  const item = useRef<HTMLLIElement | null>(null);
+  const startEditing = () => {
+    if (wide) return openDetails();
+    flushSync(() => setEditingId(reminder.id));
+    const input = titleRef.current;
+    input?.focus();
+    input?.setSelectionRange(input.value.length, input.value.length);
+  };
+  // A tap anywhere else ends editing (and saves it).
+  useEffect(() => {
+    if (!editing) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!item.current?.contains(event.target as Node)) setEditingId(null);
+    };
+    addEventListener("pointerdown", onPointerDown, true);
+    return () => removeEventListener("pointerdown", onPointerDown, true);
+  }, [editing]);
+
   return (
     <>
       <li
-        ref={sortable?.setNodeRef}
-        className={`reminder${reminder.completed ? " done" : ""}${depth ? " sub" : ""}${sortable?.isDragging ? " placeholder" : ""}${pop ? " pop" : ""}${selected ? " selected" : ""}`}
+        ref={(element) => {
+          item.current = element;
+          sortable?.setNodeRef(element);
+        }}
+        className={`reminder${editing ? " editing" : ""}${reminder.completed ? " done" : ""}${depth ? " sub" : ""}${sortable?.isDragging ? " placeholder" : ""}${pop ? " pop" : ""}${selected ? " selected" : ""}`}
         data-id={reminder.id}
         style={
           {
@@ -130,7 +159,7 @@ export function ReminderRow({
             ...sortable?.style,
           } as React.CSSProperties
         }
-        {...sortable?.listeners}
+        {...(editing ? {} : sortable?.listeners)}
       >
         {swipeable && (
           <motion.div
@@ -162,7 +191,7 @@ export function ReminderRow({
           ref={swipe.rowRef}
           className="row"
           style={{ x: swipe.x }}
-          drag={swipeable ? "x" : false}
+          drag={swipeable && !editing ? "x" : false}
           dragListener={false}
           dragControls={swipe.controls}
           dragDirectionLock
@@ -189,25 +218,38 @@ export function ReminderRow({
           >
             <i aria-hidden="true" />
           </button>
-          <button
-            className="body"
-            onClick={openDetails}
-            aria-label={`${reminder.title}${due ? `, ${due}` : ""}. Détails`}
-          >
-            <span className="title">
-              {reminder.priority > 0 && (
-                <b className="prio">{PRIORITY_MARKS[reminder.priority]} </b>
-              )}
-              {reminder.title}
-            </span>
-            {reminder.notes && <span className="notes">{reminder.notes}</span>}
-            {details.length > 0 && <span className="meta">{details}</span>}
-            {reminder.url && (
-              <span className="url">{reminder.url.replace(/^https?:\/\/(www\.)?/, "")}</span>
-            )}
-          </button>
-          {assignee && <Avatar member={assignee} />}
-          {children.length > 0 && (
+          {editing ? (
+            <InlineEditor
+              reminder={reminder}
+              titleRef={titleRef}
+              onDetails={() => {
+                setEditingId(null);
+                openDetails();
+              }}
+            />
+          ) : (
+            <>
+              <button
+                className="body"
+                onClick={startEditing}
+                aria-label={`${reminder.title}${due ? `, ${due}` : ""}. Détails`}
+              >
+                <span className="title">
+                  {reminder.priority > 0 && (
+                    <b className="prio">{PRIORITY_MARKS[reminder.priority]} </b>
+                  )}
+                  {reminder.title}
+                </span>
+                {reminder.notes && <span className="notes">{reminder.notes}</span>}
+                {details.length > 0 && <span className="meta">{details}</span>}
+                {reminder.url && (
+                  <span className="url">{reminder.url.replace(/^https?:\/\/(www\.)?/, "")}</span>
+                )}
+              </button>
+              {assignee && <Avatar member={assignee} />}
+            </>
+          )}
+          {children.length > 0 && !editing && (
             <button
               className={`expand${expanded ? " on" : ""}`}
               onClick={() => setExpanded(!expanded)}
