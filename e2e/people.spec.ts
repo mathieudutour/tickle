@@ -16,8 +16,9 @@ test("reminders assigned to someone else stay out of « Aujourd’hui »", async
   await expect(a.locator(".me-badge")).toHaveCount(1);
 
   await a.goto("/#aujourdhui");
-  await addReminders(a, ["Pain @lea", "Lait", "Courrier @Mathieu 18h", "Écrire à @Paul"]);
-  await expect.poll(() => rowTitles(a)).toEqual(["Lait", "Écrire à @Paul", "Courrier"]);
+  // No time of day: past it, the parser would move « Courrier » to tomorrow.
+  await addReminders(a, ["Pain @lea", "Lait", "Courrier @Mathieu aujourd’hui", "Écrire à @Paul"]);
+  await expect.poll(() => rowTitles(a)).toEqual(["Lait", "Courrier", "Écrire à @Paul"]);
 
   // Léa's device sees hers and nobody's, once it says who it is.
   const b = await (await browser.newContext()).newPage();

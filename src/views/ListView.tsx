@@ -30,6 +30,7 @@ import { useUndoMove } from "../components/useReminderActions";
 import type { Route } from "../lib/router";
 import { useLinger } from "../lib/useLinger";
 import { listReminders, newId, orderBetween } from "../lib/views";
+import type { Reminder } from "../shared/space";
 import { useStore } from "../store/StoreProvider";
 import { Header } from "./Header";
 
@@ -68,7 +69,7 @@ function useShowCompleted(listId: string): [boolean, (show: boolean) => void] {
 /** One list, with its sections: reminders are reordered and moved between sections by dragging their handle. */
 export function ListView({ id, navigate }: { id: string; navigate: (route: Route) => void }) {
   const { space, dispatch } = useStore();
-  const { openSheet } = useUi();
+  const { openSheet, toast } = useUi();
   const undoMove = useUndoMove();
   const list = space.lists.find((l) => l.id === id);
   const [showCompleted, setShowCompleted] = useShowCompleted(id);
@@ -201,7 +202,33 @@ export function ListView({ id, navigate }: { id: string; navigate: (route: Route
           >
             <RowIcon name={showCompleted ? "eyeSlash" : "eye"} color={list.color} />
             {showCompleted ? "Masquer les terminés" : "Afficher les terminés"}
+            {completedCount > 0 && <span className="menu-count">{completedCount}</span>}
           </button>
+          {completedCount > 0 && (
+            <button
+              className="menu-item"
+              onClick={() => {
+                close();
+                const removed = Object.values(space.reminders).filter(
+                  (r) => r.completed && r.listId === list.id,
+                );
+                // Parents before their subtasks, so « Annuler » puts each subtask back under its parent.
+                const depth = (r: Reminder): number =>
+                  r.parentId && space.reminders[r.parentId]
+                    ? 1 + depth(space.reminders[r.parentId]!)
+                    : 0;
+                removed.sort((x, y) => depth(x) - depth(y));
+                dispatch({ type: "clearCompleted", listId: list.id });
+                const n = removed.length;
+                toast(`${n} terminé${n > 1 ? "s" : ""} effacé${n > 1 ? "s" : ""}`, () => {
+                  for (const reminder of removed) dispatch({ type: "addReminder", reminder });
+                });
+              }}
+            >
+              <RowIcon name="trash" color="red" />
+              Effacer les terminés
+            </button>
+          )}
         </div>
       </Sheet>
     ));
@@ -226,25 +253,6 @@ export function ListView({ id, navigate }: { id: string; navigate: (route: Route
           </button>
         }
       />
-
-      {completedCount > 0 && (
-        <p className="completed-bar">
-          <span>
-            {completedCount} terminé{completedCount > 1 ? "s" : ""}
-          </span>
-          {showCompleted && (
-            <button
-              className="link-button"
-              onClick={() => dispatch({ type: "clearCompleted", listId: list.id })}
-            >
-              Effacer
-            </button>
-          )}
-          <button className="link-button" onClick={() => setShowCompleted(!showCompleted)}>
-            {showCompleted ? "Masquer" : "Afficher"}
-          </button>
-        </p>
-      )}
 
       <DndContext
         sensors={sensors}

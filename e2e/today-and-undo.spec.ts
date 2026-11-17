@@ -20,7 +20,8 @@ test("checking a reminder can be undone", async ({ page }) => {
   await expect(page.locator(".toast")).toContainText("Fait : Lait");
   await page.locator(".toast button", { hasText: "Annuler" }).click();
   await expect(page.getByRole("checkbox", { name: "Terminer Lait" })).toBeVisible();
-  await expect(page.locator(".completed-bar")).toHaveCount(0);
+  await page.getByRole("button", { name: "Options de la liste" }).click();
+  await expect(page.locator(".menu-item", { hasText: "Effacer les terminés" })).toHaveCount(0);
 });
 
 test("undoing a repeating reminder removes its completed copy and moves it back", async ({
@@ -34,7 +35,27 @@ test("undoing a repeating reminder removes its completed copy and moves it back"
   await expect(row(page, "Arroser").locator(".meta")).toContainText("Demain");
   await page.locator(".toast button", { hasText: "Annuler" }).click();
   await expect(row(page, "Arroser").locator(".meta")).toContainText("Aujourd’hui");
-  await expect(page.locator(".completed-bar")).toHaveCount(0);
+  // No completed copy left behind.
+  await page.getByRole("button", { name: "Options de la liste" }).click();
+  await expect(page.locator(".menu-item", { hasText: "Effacer les terminés" })).toHaveCount(0);
+});
+
+test("completed reminders are shown and cleared from the list's menu, undoably", async ({
+  page,
+}) => {
+  await openList(page);
+  await addReminders(page, ["Lait", "Pain"]);
+  await page.getByRole("checkbox", { name: "Terminer Lait" }).click();
+  await expect.poll(() => rowTitles(page)).toEqual(["Pain"]);
+  await page.getByRole("button", { name: "Options de la liste" }).click();
+  await expect(page.locator(".menu-item", { hasText: "Afficher les terminés" })).toContainText("1");
+  await page.locator(".menu-item", { hasText: "Afficher les terminés" }).click();
+  await expect.poll(() => rowTitles(page)).toEqual(["Lait", "Pain"]);
+  await page.getByRole("button", { name: "Options de la liste" }).click();
+  await page.locator(".menu-item", { hasText: "Effacer les terminés" }).click();
+  await expect.poll(() => rowTitles(page)).toEqual(["Pain"]);
+  await page.locator(".toast button", { hasText: "Annuler" }).click();
+  await expect.poll(() => rowTitles(page)).toEqual(["Lait", "Pain"]);
 });
 
 test.describe(() => {

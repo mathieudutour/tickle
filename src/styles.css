@@ -933,19 +933,6 @@ h3 {
   color: var(--accent);
 }
 
-.completed-bar {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  color: var(--muted);
-  font-size: 15px;
-  margin: -4px 0 12px;
-}
-
-.completed-bar span {
-  flex: 1;
-}
-
 .art {
   display: block;
   width: 200px;
@@ -1389,6 +1376,11 @@ input[role="switch"]:checked::after {
 
 .parent {
   align-self: flex-start;
+}
+
+.menu-count {
+  margin-left: auto;
+  color: var(--muted);
 }
 
 .menu .menu-item {
