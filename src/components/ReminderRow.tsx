@@ -8,7 +8,15 @@ import {
 } from "motion/react";
 import { useContext, useEffect, useRef, useState, type CSSProperties } from "react";
 import { flushSync } from "react-dom";
-import { dueLabel, isOverdue, nowLocal, repeatLabel, subtasks } from "../lib/views";
+import {
+  dueLabel,
+  isOverdue,
+  newId,
+  nowLocal,
+  orderBetween,
+  repeatLabel,
+  subtasks,
+} from "../lib/views";
 import type { Reminder } from "../shared/space";
 import { useStore } from "../store/StoreProvider";
 import { Icon } from "./Icon";
@@ -33,6 +41,11 @@ interface Props {
   onCompleted?: (id: string) => void;
   /** Set when the row can be reordered (in its list): dnd-kit's bindings for it. */
   sortable?: SortableBinding;
+  /**
+   * What a reminder made by pressing Return while editing this one gets from where it's shown (a date in Today, a tag
+   * in a tag view). Without it, Return just ends editing.
+   */
+  continueWith?: (reminder: Reminder) => Partial<Reminder>;
   /** Swipe left for « Détails » and « Supprimer » (on touch). Off for the copy lifted while reordering. */
   swipeable?: boolean;
   depth?: number;
@@ -55,6 +68,7 @@ export function ReminderRow({
   showCompleted = false,
   onCompleted,
   sortable,
+  continueWith,
   swipeable = true,
   depth = 0,
 }: Props) {
@@ -133,6 +147,44 @@ export function ReminderRow({
     input?.focus();
     input?.setSelectionRange(input.value.length, input.value.length);
   };
+  // Return while editing: a new reminder just after this one (same list, section and parent), edited at once. Focused
+  // in the same keystroke, so the keyboard stays up on iOS.
+  const { dispatch } = useStore();
+  const continueEditing =
+    continueWith &&
+    (() => {
+      const siblings = Object.values(space.reminders)
+        .filter(
+          (r) =>
+            r.listId === reminder.listId &&
+            (r.sectionId ?? null) === (reminder.sectionId ?? null) &&
+            (r.parentId ?? null) === (reminder.parentId ?? null),
+        )
+        .sort((a, b) => a.order - b.order);
+      const next = siblings.find((r) => r.order > reminder.order);
+      const id = newId();
+      flushSync(() => {
+        dispatch({
+          type: "addReminder",
+          reminder: {
+            id,
+            listId: reminder.listId,
+            ...(reminder.sectionId ? { sectionId: reminder.sectionId } : {}),
+            ...(reminder.parentId ? { parentId: reminder.parentId } : {}),
+            title: "",
+            priority: 0,
+            tags: [],
+            completed: false,
+            createdAt: new Date().toISOString(),
+            order: orderBetween(reminder.order, next?.order),
+            ...continueWith(reminder),
+          },
+        });
+        setEditingId(id);
+      });
+      document.querySelector<HTMLInputElement>(`.reminder[data-id="${id}"] .inline-title`)?.focus();
+    });
+
   // A tap anywhere else ends editing (and saves it).
   useEffect(() => {
     if (!editing) return;
@@ -226,6 +278,7 @@ export function ReminderRow({
                 setEditingId(null);
                 openDetails();
               }}
+              onContinue={continueEditing}
             />
           ) : (
             <>
@@ -269,6 +322,7 @@ export function ReminderRow({
             depth={depth + 1}
             showCompleted={showCompleted}
             onCompleted={onCompleted}
+            continueWith={continueWith}
           />
         ))}
     </>

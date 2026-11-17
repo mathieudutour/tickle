@@ -15,6 +15,7 @@ import type { Reminder, ReminderPatch } from "../shared/space";
 import { useStore } from "../store/StoreProvider";
 import { Icon } from "./Icon";
 import { useAlertPrompt } from "./useAlertPrompt";
+import { useDeleteReminder } from "./useDeleteReminder";
 
 /**
  * A reminder edited in place, as in Reminders on an iPhone: its title and a note, and buttons for the date (then its
@@ -25,13 +26,17 @@ export function InlineEditor({
   reminder,
   titleRef,
   onDetails,
+  onContinue,
 }: {
   reminder: Reminder;
   titleRef: Ref<HTMLInputElement>;
   onDetails: () => void;
+  /** Return: on to a new reminder just after this one, as in Reminders. Without it, or on an empty title, Return ends. */
+  onContinue?: () => void;
 }) {
   const { space, dispatch } = useStore();
   const promptAlerts = useAlertPrompt();
+  const deleteReminder = useDeleteReminder();
   const [showTags, setShowTags] = useState(false);
   const [tag, setTag] = useState("");
   const draft = useRef({ title: reminder.title, notes: reminder.notes ?? "" });
@@ -45,6 +50,9 @@ export function InlineEditor({
   save.current = () => {
     const patch: ReminderPatch = {};
     const title = draft.current.title.trim();
+    // Erasing the title deletes the reminder, with « Annuler » to get it back as it was. (A new one never given a
+    // title is deleted by the app: App.tsx.)
+    if (!title && reminder.title) return deleteReminder(reminder.id);
     if (title && title !== reminder.title) patch.title = title;
     if (draft.current.notes !== (reminder.notes ?? "")) patch.notes = draft.current.notes || null;
     if (Object.keys(patch).length) update(patch);
@@ -67,9 +75,15 @@ export function InlineEditor({
         enterKeyHint="done"
         onChange={(e) => (draft.current.title = e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === "Escape") {
+          if (
+            e.key === "Escape" ||
+            (e.key === "Enter" && (!onContinue || !e.currentTarget.value.trim()))
+          ) {
             e.preventDefault();
             setEditingId(null);
+          } else if (e.key === "Enter") {
+            e.preventDefault();
+            onContinue?.();
           }
         }}
       />

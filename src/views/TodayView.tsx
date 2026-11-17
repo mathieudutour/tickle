@@ -64,7 +64,14 @@ export function TodayView({ navigate }: { navigate: (route: Route) => void }) {
           <h3 className={`section-title static${group.late ? " late" : ""}`}>{group.title}</h3>
           <ul className="reminders">
             {group.items.sort(byTime).map((r) => (
-              <ReminderRow key={r.id} reminder={r} showList timeOnly onCompleted={linger} />
+              <ReminderRow
+                key={r.id}
+                reminder={r}
+                showList
+                timeOnly
+                onCompleted={linger}
+                continueWith={() => ({ due: { date: today } })}
+              />
             ))}
           </ul>
         </section>

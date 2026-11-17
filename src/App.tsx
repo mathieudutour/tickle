@@ -2,7 +2,9 @@ import { useContext, useEffect, useRef } from "react";
 import { ReminderPane, ReminderSheet } from "./components/ReminderSheet";
 import { DetailsPane } from "./lib/detailsPane";
 import { JoinSheet } from "./components/Sharing";
+import { useDeleteReminder } from "./components/useDeleteReminder";
 import { useKeyboardShortcuts } from "./components/useKeyboardShortcuts";
+import { useEditingId } from "./lib/inlineEdit";
 import { useUi } from "./components/UiProvider";
 import { useMe } from "./lib/me";
 import { updatePushRegistration } from "./lib/push";
@@ -22,6 +24,24 @@ export function App() {
   const { openSheet, toast } = useUi();
   const wide = useWide();
   useKeyboardShortcuts(route);
+
+  // A new reminder (Return makes them) still without a title when editing in place ends goes away, as in Reminders:
+  // silently when nothing was added to it, with « Annuler » otherwise. Erasing a title is handled by InlineEditor.
+  const editingId = useEditingId();
+  const lastEditing = useRef<string | null>(null);
+  const deleteReminder = useDeleteReminder();
+  useEffect(() => {
+    const left = lastEditing.current;
+    lastEditing.current = editingId;
+    if (!left || left === editingId) return;
+    // Read fresh: the editor saved its text as it closed, after this render.
+    const reminder = sync.getState().reminders[left];
+    if (!reminder || reminder.title.trim()) return;
+    const blank = !reminder.notes && !reminder.due && !reminder.tags.length && !reminder.url;
+    if (blank && !Object.values(sync.getState().reminders).some((r) => r.parentId === left))
+      sync.dispatch({ type: "deleteReminder", id: left });
+    else deleteReminder(left);
+  }, [editingId, sync, deleteReminder]);
   // On a wide screen, the reminder shown in the right pane. Moving to another screen clears it, unless a reminder was
   // asked for on the way (a notification opens its list and selects it).
   const { selectedId: selected, show: setSelected } = useContext(DetailsPane);

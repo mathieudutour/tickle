@@ -278,6 +278,7 @@ export function ListView({ id, navigate }: { id: string; navigate: (route: Route
                         reminder={reminder}
                         showCompleted={showCompleted}
                         onCompleted={linger}
+                        continueWith={() => ({})}
                       />
                     ) : null;
                   })}

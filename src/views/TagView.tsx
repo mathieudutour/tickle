@@ -21,7 +21,13 @@ export function TagView({ tag, navigate }: { tag: string; navigate: (route: Rout
       <section className="group-list">
         <ul className="reminders">
           {tagged.map((r) => (
-            <ReminderRow key={r.id} reminder={r} showList onCompleted={linger} />
+            <ReminderRow
+              key={r.id}
+              reminder={r}
+              showList
+              onCompleted={linger}
+              continueWith={() => ({ tags: [tag] })}
+            />
           ))}
           <QuickAdd defaults={{ listId: defaultList, tag }} />
         </ul>

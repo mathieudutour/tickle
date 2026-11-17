@@ -96,3 +96,31 @@ test("lists move by their handle in « Modifier »", async ({ page }) => {
     .poll(() => page.locator(".lists li .name").allInnerTexts())
     .toEqual(["Aujourd’hui", "Maison", "Rappels", "Courses"]);
 });
+
+test("Return while editing goes on to a new reminder below; one left empty goes away", async ({
+  page,
+}) => {
+  await row(page, "Deux").locator(".body").click();
+  await page.keyboard.press("Enter");
+  const title = page.locator(".reminder.editing .inline-title");
+  await expect(title).toBeFocused();
+  await expect(title).toHaveValue("");
+  await page.keyboard.type("Deux et demi");
+  await page.keyboard.press("Enter");
+  // Return on the new, empty one ends editing, and it's gone.
+  await expect(title).toHaveValue("");
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".reminder.editing")).toHaveCount(0);
+  await expect
+    .poll(() => rowTitles(page))
+    .toEqual(["Un", "Deux", "Deux et demi", "Trois", "Quatre", "Cinq"]);
+});
+
+test("erasing a reminder's title deletes it, with « Annuler »", async ({ page }) => {
+  await row(page, "Trois").locator(".body").click();
+  await page.locator(".reminder.editing .inline-title").fill("");
+  await page.locator(".large-title").click();
+  await expect.poll(() => rowTitles(page)).toEqual(["Un", "Deux", "Quatre", "Cinq"]);
+  await page.locator(".toast button", { hasText: "Annuler" }).click();
+  await expect.poll(() => rowTitles(page)).toContain("Trois");
+});
