@@ -49,3 +49,38 @@ test("two devices share a space: adding, moving, checking, and an agent's change
   await expect(b.locator(".toast")).toContainText("Hermes · Nouveau rappel : Rappel de l’agent");
   await expect.poll(() => rowTitles(a)).toContain("Rappel de l’agent");
 });
+
+test("pasting an invitation link in the settings joins its lists", async ({ browser }) => {
+  const a = await (await browser.newContext()).newPage();
+  const b = await (await browser.newContext()).newPage();
+  const key = await openList(a);
+  await addReminders(a, ["Pain"]);
+
+  // Like the app on an iPhone's home screen: no link to tap, its own storage.
+  await b.goto("/#reglages");
+  await b.getByRole("button", { name: "Rejoindre avec un lien" }).click();
+  await b
+    .getByLabel("Lien d’invitation", { exact: true })
+    .fill(`Rejoins mes listes : https://tickle.example/#rejoindre=${key}`);
+  await b.getByRole("button", { name: "Rejoindre", exact: true }).click();
+  await b.goto("/#liste=rappels");
+  await expect.poll(() => rowTitles(b)).toEqual(["Pain"]);
+});
+
+test("an app added to the home screen opens the lists Safari had", async ({ browser }) => {
+  const safari = await browser.newContext();
+  const a = await safari.newPage();
+  await openList(a);
+  await addReminders(a, ["Pain"]);
+
+  // iOS copies Safari's cookies into the new app, and no other storage.
+  const installed = await browser.newContext({
+    storageState: { cookies: await safari.cookies(), origins: [] },
+  });
+  await installed.addInitScript(() =>
+    Object.defineProperty(navigator, "standalone", { get: () => true }),
+  );
+  const b = await installed.newPage();
+  await b.goto("/#liste=rappels");
+  await expect.poll(() => rowTitles(b)).toEqual(["Pain"]);
+});

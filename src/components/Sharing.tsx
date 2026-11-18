@@ -20,7 +20,7 @@ export function statusLabel(status: SyncStatus): string {
 /** Invite someone to the space (a link or a QR code), or leave it. */
 export function Sharing() {
   const { status, sync } = useStore();
-  const { toast, copy } = useUi();
+  const { toast, copy, openSheet } = useUi();
   const [confirmLeave, setConfirmLeave] = useState(false);
   const link = sync.inviteLink();
   const qr = useMemo(
@@ -78,6 +78,12 @@ export function Sharing() {
       <p className="note spaced">
         Toute personne qui a ce lien voit et modifie tes listes : ne l’envoie qu’à qui tu veux.
       </p>
+      <button
+        className="cta ghost"
+        onClick={() => openSheet((close) => <JoinWithLinkSheet onClose={close} />)}
+      >
+        Rejoindre avec un lien
+      </button>
       {status.key && (
         <button
           className={`cta ghost${confirmLeave ? " danger" : ""}`}
@@ -139,6 +145,66 @@ export function JoinSheet({
           Pas maintenant
         </button>
       </div>
+    </Sheet>
+  );
+}
+
+/** The space key in an invitation link (…/#rejoindre=KEY), or a key on its own. */
+export function keyFromLink(text: string): string | undefined {
+  const value = text.trim();
+  const key = value.match(/rejoindre=([\w-]+)/)?.[1] ?? value;
+  return /^[\w-]{20,}$/.test(key) ? key : undefined;
+}
+
+/**
+ * Joins from a pasted invitation link. Links open in Safari, never in the app on the home screen, which on iPhone
+ * keeps its own storage: this is how that app joins the lists Safari already has.
+ */
+function JoinWithLinkSheet({ onClose }: { onClose: () => void }) {
+  const { space, sync, status } = useStore();
+  const { toast } = useUi();
+  const [link, setLink] = useState("");
+  const key = keyFromLink(link);
+  const count = Object.values(space.reminders).filter((r) => !r.completed).length;
+  return (
+    <Sheet onClose={onClose} labelledBy="join-link-title">
+      <form
+        className="in"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!key) return;
+          onClose();
+          if (key === status.key) return toast("Tu partages déjà ces listes");
+          sync.join(key);
+          toast("Bienvenue ! Les listes partagées arrivent…");
+        }}
+      >
+        <SheetHeader
+          id="join-link-title"
+          title="Rejoindre avec un lien"
+          onClose={onClose}
+          closeLabel="Annuler"
+        />
+        <input
+          className="field title-field"
+          value={link}
+          onChange={(e) => setLink(e.target.value)}
+          placeholder="Colle le lien d’invitation"
+          aria-label="Lien d’invitation"
+          autoComplete="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          data-autofocus
+        />
+        <p className="note">
+          {count
+            ? `Les ${count} rappel${count > 1 ? "s" : ""} enregistré${count > 1 ? "s" : ""} sur cet appareil seront remplacés par les listes partagées.`
+            : "Ce qui est enregistré sur cet appareil sera remplacé par les listes partagées."}
+        </p>
+        <button className="cta" disabled={!key}>
+          Rejoindre
+        </button>
+      </form>
     </Sheet>
   );
 }

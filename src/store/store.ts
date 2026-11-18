@@ -1,4 +1,4 @@
-import { isStandalone, keepStorage } from "../lib/install";
+import { handToInstall, installedKey, isStandalone, keepStorage } from "../lib/install";
 import {
   freshSpace,
   normalizeSpace,
@@ -92,6 +92,13 @@ export class AppStore {
       version: stored.sync?.version ?? 0,
       pending: stored.sync?.pending ?? [],
     };
+    // A home screen app on iPhone starts with empty storage, but with a copy of Safari's cookies: join the space
+    // Safari had instead of creating a new, empty one.
+    const handed = stored.sync ? undefined : installedKey();
+    if (handed) {
+      this.key = handed;
+      this.sync = { ...this.sync, version: -1 };
+    }
     this.update(false);
     // Back on the network or on screen: check the connection, or create the space if it doesn't exist yet.
     addEventListener("online", () => this.checkConnection());
@@ -280,6 +287,7 @@ export class AppStore {
       joined: this.joined,
     };
     if (JSON.stringify(status) !== JSON.stringify(this.status)) this.status = status;
+    if (this.key) handToInstall(this.key);
     const persisted: Persisted = {
       space: this.sync.confirmed,
       sync: this.key
