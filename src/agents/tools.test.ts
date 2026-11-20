@@ -53,6 +53,30 @@ describe("agent tools", () => {
     );
   });
 
+  it("puts a list in a given order, the reminders left out after", async () => {
+    const { call, notices } = setup();
+    await call("add_list", { name: "Courses" });
+    const ids: Record<string, string> = {};
+    for (const title of ["Lait", "Pain", "Pommes", "Savon"])
+      ids[title] = (await call("add_reminder", { title, list: "Courses" })).id;
+    const reordered = await call("reorder_reminders", {
+      list: "Courses",
+      ids: [ids.Pommes, ids.Pain, ids.Lait],
+    });
+    expect(reordered.reminders).toEqual(["Pommes", "Pain", "Lait", "Savon"]);
+    const listed = await call("list_reminders", { list: "Courses" });
+    expect(listed.reminders.map((r: { title: string }) => r.title)).toEqual([
+      "Pommes",
+      "Pain",
+      "Lait",
+      "Savon",
+    ]);
+    expect(notices.at(-1)).toBe("🤖 Courses réordonnée");
+    await expect(call("reorder_reminders", { list: "Rappels", ids: [ids.Lait] })).rejects.toThrow(
+      /Not reminders of Rappels/,
+    );
+  });
+
   it("completes a repeating reminder by moving it to its next date", async () => {
     const { call, state } = setup();
     const { id } = await call("add_reminder", {

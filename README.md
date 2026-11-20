@@ -45,7 +45,7 @@ mcp_servers:
 Le serveur MCP est en Streamable HTTP sans état (`POST /api/mcp`). Il expose les outils suivants :
 
 - `get_overview`, `list_reminders`, `get_reminder` ;
-- `add_reminder`, `update_reminder`, `complete_reminder`, `delete_reminder`, `clear_completed` ;
+- `add_reminder`, `update_reminder`, `complete_reminder`, `delete_reminder`, `reorder_reminders`, `clear_completed` ;
 - `add_list`, `update_list`, `delete_list`.
 
 Ce que fait l’agent apparaît en direct sur les appareils, avec une notification « 🤖 Hermes · … ».

@@ -453,6 +453,46 @@ export function createTools(api: TickleApi): Tool[] {
       },
     }),
     tool({
+      name: "reorder_reminders",
+      title: "Réordonner des rappels",
+      description:
+        "Put a list's reminders in a given order, for example a shopping list in the order of the shop's aisles. Give the ids (from list_reminders) in the order you want; the list's reminders you leave out go after them, in their current order. In a list with sections, each section's reminders follow this order. To reorder subtasks, give parent_id and the subtasks' ids.",
+      inputSchema: object(
+        {
+          list: listRef,
+          parent_id: { type: "string", description: "Reorder this reminder's subtasks instead." },
+          ids: { type: "array", items: { type: "string" }, minItems: 1 },
+        },
+        ["ids"],
+      ),
+      run: (input) => {
+        const space = api.getState();
+        const parent = input.parent_id ? findReminder(input.parent_id) : undefined;
+        if (!parent && !input.list)
+          throw new ToolError("Give the list, or parent_id for subtasks.");
+        const list = findList(space, parent ? parent.listId : input.list);
+        const siblings = Object.values(space.reminders)
+          .filter((r) => r.listId === list.id && r.parentId === parent?.id)
+          .sort((a, b) => a.order - b.order);
+        const ids = Array.isArray(input.ids) ? input.ids.map(String) : [];
+        const strangers = ids.filter((id) => !siblings.some((r) => r.id === id));
+        if (strangers.length)
+          throw new ToolError(
+            `Not ${parent ? `subtasks of "${parent.title}"` : `reminders of ${list.name} (subtasks need parent_id)`}: ${strangers.join(", ")}.`,
+          );
+        const wanted = [...new Set(ids)].map((id) => space.reminders[id]!);
+        const ordered = [...wanted, ...siblings.filter((r) => !wanted.includes(r))];
+        ordered.forEach((reminder, order) => {
+          if (reminder.order !== order)
+            api.dispatch({ type: "updateReminder", id: reminder.id, patch: { order } });
+        });
+        api.notify(
+          `🤖 ${parent ? `Sous-tâches de ${parent.title}` : list.name} réordonnée${parent ? "s" : ""}`,
+        );
+        return { reminders: ordered.filter((r) => !r.completed).map((r) => r.title) };
+      },
+    }),
+    tool({
       name: "clear_completed",
       title: "Effacer les rappels terminés",
       description: "Delete the completed reminders of a list, or of every list.",
