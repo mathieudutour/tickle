@@ -64,11 +64,23 @@ targets:
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
+  TickleUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [TickleUITests]
+    dependencies:
+      - target: Tickle
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Tickle
+        PRODUCT_BUNDLE_IDENTIFIER: com.mathieudutour.tickle.uitests
 schemes:
   Tickle:
     build:
       targets:
         Tickle: all
         TickleTests: [test]
+        TickleUITests: [test]
     test:
-      targets: [TickleTests]
+      targets: [TickleTests, TickleUITests]

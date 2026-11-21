@@ -51,7 +51,12 @@ final class Store {
     self.server = server
     self.file = file
     self.session = session
-    core.load(try? String(contentsOf: file, encoding: .utf8), timeZone: TimeZone.current.identifier)
+    var saved = try? String(contentsOf: file, encoding: .utf8)
+    #if DEBUG
+      // UI tests start from a known space (`launchEnvironment["TICKLE_SEED"]`, the format of `persisted()`).
+      if let seed = ProcessInfo.processInfo.environment["TICKLE_SEED"] { saved = seed }
+    #endif
+    core.load(saved, timeZone: TimeZone.current.identifier)
     update(save: false)
     clock = Task { [weak self] in
       while !Task.isCancelled {

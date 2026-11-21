@@ -1,0 +1,17 @@
+{"space":{"timeZone":"Europe/Paris","members":[{"id":"m1","name":"Léa","color":"pink"},{"id":"m2","name":"Mathieu","color":"blue"}],
+"lists":[{"id":"rappels","name":"Rappels","color":"pink","icon":"📋","order":0,"sections":[]},
+{"id":"courses","name":"Courses","color":"green","icon":"🛒","order":1,"sections":[{"id":"s1","name":"Frais","order":0},{"id":"s2","name":"Épicerie","order":1}]}],
+"reminders":{
+"r1":{"id":"r1","listId":"rappels","title":"Appeler maman","due":{"date":"{{today}}","time":"18:00"},"early":15,"priority":0,"tags":[],"completed":false,"createdAt":"2026-11-20T10:00:00.000Z","order":1},
+"r2":{"id":"r2","listId":"rappels","title":"Acheter du pain","notes":"Complet, pas trop cuit","priority":0,"tags":["courses"],"completed":false,"createdAt":"2026-11-20T10:00:00.000Z","order":2,"assignee":"m1"},
+"r3":{"id":"r3","listId":"rappels","title":"Arroser les plantes","due":{"date":"{{tomorrow}}","time":"09:00"},"repeat":{"freq":"weekly","interval":1},"priority":0,"tags":["maison"],"completed":false,"createdAt":"2026-11-20T10:00:00.000Z","order":3},
+"r4":{"id":"r4","listId":"rappels","title":"Payer la facture d’électricité","due":{"date":"{{yesterday}}"},"priority":2,"tags":[],"completed":false,"createdAt":"2026-11-20T10:00:00.000Z","order":4,"url":"https://www.edf.fr/compte"},
+"r5":{"id":"r5","listId":"rappels","title":"Préparer le voyage","due":{"date":"{{today}}"},"priority":0,"tags":[],"completed":false,"createdAt":"2026-11-20T10:00:00.000Z","order":5},
+"r5a":{"id":"r5a","listId":"rappels","parentId":"r5","title":"Réserver le train","priority":0,"tags":[],"completed":true,"completedAt":"2026-11-20T12:00:00.000Z","createdAt":"2026-11-20T10:00:00.000Z","order":1},
+"r5b":{"id":"r5b","listId":"rappels","parentId":"r5","title":"Faire la valise","priority":0,"tags":[],"completed":false,"createdAt":"2026-11-20T10:00:00.000Z","order":2},
+"r6":{"id":"r6","listId":"rappels","title":"Lait","priority":0,"tags":[],"completed":true,"completedAt":"2026-11-20T12:00:00.000Z","createdAt":"2026-11-20T10:00:00.000Z","order":6},
+"c1":{"id":"c1","listId":"courses","sectionId":"s1","title":"Yaourts","priority":0,"tags":[],"completed":false,"createdAt":"2026-11-20T10:00:00.000Z","order":1},
+"c2":{"id":"c2","listId":"courses","sectionId":"s1","title":"Beurre","priority":0,"tags":[],"completed":false,"createdAt":"2026-11-20T10:00:00.000Z","order":2},
+"c3":{"id":"c3","listId":"courses","sectionId":"s2","title":"Pâtes","priority":0,"tags":[],"completed":false,"createdAt":"2026-11-20T10:00:00.000Z","order":1},
+"c4":{"id":"c4","listId":"courses","title":"Piles AA","priority":0,"tags":[],"completed":false,"createdAt":"2026-11-20T10:00:00.000Z","order":1,"assignee":"m2"}
+}}}

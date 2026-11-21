@@ -15,10 +15,11 @@ struct RootView: View {
     }
     .alertPrompt()
     .overlay(alignment: .bottom) { ToastOverlay() }
-    .environment(toaster)
     .sheet(item: Binding(get: { router.joinKey.map(JoinKey.init) }, set: { router.joinKey = $0?.id })) { join in
       JoinSheet(joinKey: join.id)
     }
+    // Below the sheet, so the sheet's content can show toasts too.
+    .environment(toaster)
     .onChange(of: store.notice) { _, notice in
       guard let notice else { return }
       toaster.show(notice)
@@ -60,9 +61,11 @@ private struct StackRoot: View {
 
 private struct SplitRoot: View {
   @Environment(Router.self) private var router
+  /// All three columns, even in portrait, where iOS would otherwise show only the details.
+  @State private var columns = NavigationSplitViewVisibility.all
 
   var body: some View {
-    NavigationSplitView {
+    NavigationSplitView(columnVisibility: $columns) {
       HomeView()
     } content: {
       NavigationStack {
@@ -75,7 +78,14 @@ private struct SplitRoot: View {
         ContentUnavailableView("Aucun rappel sélectionné", systemImage: "checklist", description: Text("Choisis un rappel pour voir ses détails."))
       }
     }
+    .environment(\.wideLayout, true)
   }
 }
 
 struct ReminderID: Identifiable, Hashable { var id: String }
+
+extension EnvironmentValues {
+  /// Set on the iPad's split layout: Home is the sidebar, and a tap selects a reminder for the details beside the list
+  /// instead of editing it in place. (Inside a split view's columns the size class is compact, so they can't tell.)
+  @Entry var wideLayout = false
+}

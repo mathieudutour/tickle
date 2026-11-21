@@ -40,7 +40,7 @@ enum ListColor: String, Codable, CaseIterable, Sendable {
   }
 }
 
-struct Section: Codable, Hashable, Identifiable, Sendable {
+struct ListSection: Codable, Hashable, Identifiable, Sendable {
   var id: String
   var name: String
   var order: Double
@@ -53,7 +53,7 @@ struct TickleList: Codable, Hashable, Identifiable, Sendable {
   /// An emoji.
   var icon: String
   var order: Double
-  var sections: [Section]
+  var sections: [ListSection]
 }
 
 struct Due: Codable, Hashable, Sendable {
@@ -173,7 +173,7 @@ enum SpaceAction: Encodable, Sendable {
   case updateList(id: String, name: String? = nil, color: ListColor? = nil, icon: String? = nil)
   case deleteList(id: String)
   case reorderLists(ids: [String])
-  case addSection(listId: String, section: Section)
+  case addSection(listId: String, section: ListSection)
   case renameSection(listId: String, id: String, name: String)
   case deleteSection(listId: String, id: String)
   case addReminder(Reminder)
