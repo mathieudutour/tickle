@@ -38,6 +38,23 @@ final class Router {
     selectedReminder = id
   }
 
+  #if DEBUG
+    /// Opens a screen at launch, for checking it in the simulator: `-TickleOpen today`, `list:ID`, `tag:NAME`,
+    /// `settings`, `reminder:ID`.
+    func openFromLaunchArguments(_ store: Store) {
+      guard let target = UserDefaults.standard.string(forKey: "TickleOpen") else { return }
+      let parts = target.split(separator: ":", maxSplits: 1).map(String.init)
+      switch parts.first {
+      case "today": show(.today)
+      case "settings": show(.settings)
+      case "list" where parts.count == 2: show(.list(parts[1]))
+      case "tag" where parts.count == 2: show(.tag(parts[1]))
+      case "reminder" where parts.count == 2: open(reminder: parts[1], in: store)
+      default: break
+      }
+    }
+  #endif
+
   /// Invitation links: https://…/#rejoindre=KEY (universal link) or tickle://rejoindre/KEY.
   func handle(_ url: URL) {
     let fragment = url.fragment ?? ""

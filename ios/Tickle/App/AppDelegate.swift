@@ -19,6 +19,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
     push.attach(store)
+    #if DEBUG
+      router.openFromLaunchArguments(store)
+    #endif
     let center = UNUserNotificationCenter.current()
     center.delegate = self
     center.setNotificationCategories([

@@ -61,8 +61,12 @@ final class Store {
     }
   }
 
+  /// The Info.plist's server, unless a launch argument (`-TickleServer http://localhost:5288`) points elsewhere, for
+  /// development and the simulator.
   static var defaultServer: URL {
-    let configured = Bundle.main.object(forInfoDictionaryKey: "TickleServer") as? String
+    let configured =
+      UserDefaults.standard.string(forKey: "TickleServer")
+      ?? Bundle.main.object(forInfoDictionaryKey: "TickleServer") as? String
     return URL(string: configured ?? "https://tickle.mathieu-3e7.workers.dev")!
   }
 
