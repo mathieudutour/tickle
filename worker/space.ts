@@ -1,6 +1,7 @@
 import { buildPushHTTPRequest, type PushSubscription } from "@pushforge/builder";
 import { DurableObject } from "cloudflare:workers";
 import { createTools } from "../src/agents/tools";
+import { apnsConfig, isApnsDevice, sendApns, type ApnsDevice } from "./apns";
 import { alertsOf, nextSummaryAt, summaryOf } from "../src/lib/alerts";
 import { isTime, nowIn } from "../src/lib/dates";
 import { newId } from "../src/lib/views";
@@ -27,6 +28,8 @@ const EXPIRES_KEY = "expiresAt";
 const CONTACT_KEY = "contact";
 const MAX_AGENTS = 10;
 const MAX_DEVICES = 30;
+/** An iPhone not connected right now is woken to sync after a change, at most this often. */
+const NUDGE_EVERY_MS = 30 * 1000;
 
 /** An agent allowed to use the space through MCP. Only a hash of its secret is kept. */
 interface Agent {
@@ -37,10 +40,11 @@ interface Agent {
   lastUsedAt?: string;
 }
 
-/** A browser that gets the space's alerts as push notifications. */
+/** A browser (web push) or an iPhone running the app (APNs) that gets the space's alerts as push notifications. */
 interface Device {
   id: string;
-  subscription: PushSubscription;
+  subscription?: PushSubscription;
+  apns?: ApnsDevice;
   /** The member using this device: it only gets their reminders and the unassigned ones. */
   memberId?: string;
   /** When it wants the morning summary (HH:MM, the space's time), if it does. */
@@ -89,6 +93,8 @@ const isSubscription = (value: unknown): value is PushSubscription => {
  */
 export class Space extends DurableObject<Env> {
   private server: ServerState | undefined;
+  /** When each iPhone was last woken to sync (in memory: a hibernated object wakes them again, which is fine). */
+  private nudged = new Map<string, number>();
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -126,7 +132,12 @@ export class Space extends DurableObject<Env> {
     if (request.headers.get("Upgrade") !== "websocket")
       return new Response("Expected a WebSocket", { status: 426 });
     const { 0: client, 1: server } = new WebSocketPair();
-    this.ctx.acceptWebSocket(server);
+    // The iOS app says which push device it is, so it isn't woken for changes it receives live.
+    const device = url.searchParams.get("device");
+    this.ctx.acceptWebSocket(
+      server,
+      device && /^[A-Za-z0-9_-]{1,32}$/.test(device) ? [device] : [],
+    );
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -150,6 +161,7 @@ export class Space extends DurableObject<Env> {
       if (reply.t !== "applied") return this.reply(socket, reply);
       await this.save(server);
       for (const peer of this.ctx.getWebSockets()) this.reply(peer, reply);
+      this.ctx.waitUntil(this.nudge());
     }
   }
 
@@ -237,7 +249,10 @@ export class Space extends DurableObject<Env> {
     });
     const result = await handleMcp(body, tools);
 
-    if (applied.length) await this.save(working);
+    if (applied.length) {
+      await this.save(working);
+      this.ctx.waitUntil(this.nudge());
+    }
     for (const peer of this.ctx.getWebSockets()) {
       for (const message of applied) this.reply(peer, message);
       for (const text of notices) this.reply(peer, { t: "notice", text });
@@ -257,31 +272,39 @@ export class Space extends DurableObject<Env> {
 
   // ---------- Push notifications ----------
 
-  /** A device turns alerts on (POST, with its push subscription) or off (DELETE /push/:id). */
+  /** A device turns alerts on (POST, with its web push subscription or APNs token) or off (DELETE /push/:id). */
   private async manageDevices(request: Request, id: string | undefined): Promise<Response> {
     if (!this.server) return Response.json({ error: "unknown space" }, { status: 404 });
     const devices = (await this.ctx.storage.get<Device[]>(DEVICES_KEY)) ?? [];
     if (request.method === "POST" && !id) {
       const body = (await request.json().catch(() => null)) as {
         subscription?: unknown;
+        apns?: unknown;
         memberId?: unknown;
         summaryAt?: unknown;
       } | null;
-      if (!isSubscription(body?.subscription))
+      const subscription = isSubscription(body?.subscription)
+        ? { endpoint: body.subscription.endpoint, keys: body.subscription.keys }
+        : undefined;
+      const apns = isApnsDevice(body?.apns)
+        ? { token: body.apns.token.toLowerCase(), sandbox: body.apns.sandbox }
+        : undefined;
+      if (!body || (!subscription && !apns))
         return Response.json({ error: "invalid subscription" }, { status: 400 });
-      const { endpoint, keys } = body.subscription;
-      // The same browser subscribing again replaces its old entry.
-      const others = devices
-        .filter((d) => d.subscription.endpoint !== endpoint)
-        .slice(-(MAX_DEVICES - 1));
+      // The same browser or phone subscribing again replaces its old entry.
+      const same = (d: Device) =>
+        subscription
+          ? d.subscription?.endpoint === subscription.endpoint
+          : d.apns?.token === apns!.token;
+      const others = devices.filter((d) => !same(d)).slice(-(MAX_DEVICES - 1));
       const memberId =
         typeof body.memberId === "string" && body.memberId.length <= 64 ? body.memberId : undefined;
       const summaryAt = isTime(body.summaryAt) ? body.summaryAt : undefined;
       // Registering again keeps the day of its last summary, so changing who it is doesn't send a second one.
-      const previous = devices.find((d) => d.subscription.endpoint === endpoint);
+      const previous = devices.find(same);
       const device: Device = {
         id: randomId(9),
-        subscription: { endpoint, keys },
+        ...(subscription ? { subscription } : { apns }),
         ...(memberId ? { memberId } : {}),
         ...(summaryAt ? { summaryAt } : {}),
         ...(summaryAt && previous?.lastSummary ? { lastSummary: previous.lastSummary } : {}),
@@ -360,16 +383,76 @@ export class Space extends DurableObject<Env> {
     );
   }
 
+  /** Wakes the iPhones that aren't connected, so they sync in the background. */
+  private async nudge() {
+    const config = apnsConfig(this.env);
+    if (!config) return;
+    const now = Date.now();
+    const devices = ((await this.ctx.storage.get<Device[]>(DEVICES_KEY)) ?? []).filter(
+      (d) =>
+        d.apns &&
+        !this.ctx.getWebSockets(d.id).length &&
+        now - (this.nudged.get(d.id) ?? 0) >= NUDGE_EVERY_MS,
+    );
+    const gone = new Set<string>();
+    await Promise.all(
+      devices.map(async (device) => {
+        this.nudged.set(device.id, now);
+        try {
+          const result = await sendApns(config, device.apns!, {
+            kind: "background",
+            payload: { aps: { "content-available": 1 } },
+            collapseId: "sync",
+            ttl: 60 * 60,
+          });
+          if (result === "gone") gone.add(device.id);
+        } catch (error) {
+          console.error("apns nudge failed", error);
+        }
+      }),
+    );
+    await this.forget(gone);
+  }
+
+  private async forget(gone: Set<string>) {
+    if (!gone.size) return;
+    const devices = (await this.ctx.storage.get<Device[]>(DEVICES_KEY)) ?? [];
+    await this.ctx.storage.put(
+      DEVICES_KEY,
+      devices.filter((d) => !gone.has(d.id)),
+    );
+  }
+
   /** Sends push messages, and forgets the devices that no longer accept them. */
   private async push(messages: { device: Device; payload: Record<string, string> }[]) {
     if (!messages.length) return;
     const { privateJWK } = await this.env.KEYS.get(this.env.KEYS.idFromName("vapid")).vapid();
     const contact =
       (await this.ctx.storage.get<string>(CONTACT_KEY)) ?? "mailto:tickle@example.com";
+    const config = apnsConfig(this.env);
     const gone = new Set<string>();
     await Promise.all(
       messages.map(async ({ device, payload }) => {
         try {
+          if (device.apns) {
+            if (!config) return;
+            const { title, body, tag, ...data } = payload;
+            const result = await sendApns(config, device.apns, {
+              kind: "alert",
+              payload: {
+                aps: {
+                  alert: { title, body },
+                  sound: "default",
+                  "thread-id": tag === "summary" ? "summary" : "reminders",
+                },
+                ...data,
+              },
+              collapseId: tag,
+            });
+            if (result === "gone") gone.add(device.id);
+            return;
+          }
+          if (!device.subscription) return;
           const { endpoint, headers, body } = await buildPushHTTPRequest({
             privateJWK,
             subscription: device.subscription,
@@ -387,13 +470,7 @@ export class Space extends DurableObject<Env> {
         }
       }),
     );
-    if (gone.size) {
-      const devices = (await this.ctx.storage.get<Device[]>(DEVICES_KEY)) ?? [];
-      await this.ctx.storage.put(
-        DEVICES_KEY,
-        devices.filter((d) => !gone.has(d.id)),
-      );
-    }
+    await this.forget(gone);
   }
 
   // ---------- Storage and alarm ----------

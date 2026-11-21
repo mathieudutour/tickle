@@ -1,0 +1,74 @@
+# The Tickle iOS app. Generate the Xcode project with `xcodegen` (in this folder); the .xcodeproj isn't committed.
+name: Tickle
+options:
+  bundleIdPrefix: com.mathieudutour
+  deploymentTarget:
+    iOS: "18.0"
+  developmentLanguage: fr
+  createIntermediateGroups: true
+settings:
+  base:
+    DEVELOPMENT_TEAM: 8SEPFSC7S3
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  Tickle:
+    type: application
+    platform: iOS
+    sources:
+      - path: Tickle
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.mathieudutour.tickle
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_ENTITLEMENTS: Tickle/Tickle.entitlements
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: Tickle/Info.plist
+        ENABLE_PREVIEWS: YES
+    info:
+      path: Tickle/Info.plist
+      properties:
+        CFBundleDisplayName: Tickle
+        CFBundleDevelopmentRegion: fr
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        ITSAppUsesNonExemptEncryption: false
+        UILaunchScreen:
+          UIColorName: AccentColor
+        UIApplicationSupportsIndirectInputEvents: true
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UISupportedInterfaceOrientations~ipad:
+          [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UIBackgroundModes: [remote-notification, fetch]
+        BGTaskSchedulerPermittedIdentifiers: [com.mathieudutour.tickle.refresh]
+        # The server the app syncs with; the same as the web app's.
+        TickleServer: https://tickle.mathieu-3e7.workers.dev
+        CFBundleURLTypes:
+          - CFBundleURLName: com.mathieudutour.tickle
+            CFBundleURLSchemes: [tickle]
+    entitlements:
+      path: Tickle/Tickle.entitlements
+      properties:
+        aps-environment: development
+        com.apple.developer.associated-domains: [applinks:tickle.mathieu-3e7.workers.dev]
+  TickleTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [TickleTests]
+    dependencies:
+      - target: Tickle
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  Tickle:
+    build:
+      targets:
+        Tickle: all
+        TickleTests: [test]
+    test:
+      targets: [TickleTests]
