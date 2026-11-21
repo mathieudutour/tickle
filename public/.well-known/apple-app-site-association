@@ -2,7 +2,7 @@
   "applinks": {
     "details": [
       {
-        "appIDs": ["8SEPFSC7S3.com.mathieudutour.tickle"],
+        "appIDs": ["8SEPFSC7S3.me.dutour.mathieu.tickle"],
         "components": [{ "/": "/", "#": "rejoindre=*", "comment": "Invitation links open the iOS app" }]
       }
     ]

@@ -1,7 +1,7 @@
 # The Tickle iOS app. Generate the Xcode project with `xcodegen` (in this folder); the .xcodeproj isn't committed.
 name: Tickle
 options:
-  bundleIdPrefix: com.mathieudutour
+  bundleIdPrefix: me.dutour.mathieu
   deploymentTarget:
     iOS: "18.0"
   developmentLanguage: fr
@@ -21,7 +21,7 @@ targets:
       - path: Tickle
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.mathieudutour.tickle
+        PRODUCT_BUNDLE_IDENTIFIER: me.dutour.mathieu.tickle
         TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
@@ -44,11 +44,11 @@ targets:
         UISupportedInterfaceOrientations~ipad:
           [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         UIBackgroundModes: [remote-notification, fetch]
-        BGTaskSchedulerPermittedIdentifiers: [com.mathieudutour.tickle.refresh]
+        BGTaskSchedulerPermittedIdentifiers: [me.dutour.mathieu.tickle.refresh]
         # The server the app syncs with; the same as the web app's.
         TickleServer: https://tickle.mathieu-3e7.workers.dev
         CFBundleURLTypes:
-          - CFBundleURLName: com.mathieudutour.tickle
+          - CFBundleURLName: me.dutour.mathieu.tickle
             CFBundleURLSchemes: [tickle]
     entitlements:
       path: Tickle/Tickle.entitlements
@@ -74,7 +74,7 @@ targets:
       base:
         GENERATE_INFOPLIST_FILE: YES
         TEST_TARGET_NAME: Tickle
-        PRODUCT_BUNDLE_IDENTIFIER: com.mathieudutour.tickle.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: me.dutour.mathieu.tickle.uitests
 schemes:
   Tickle:
     build:

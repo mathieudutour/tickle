@@ -28,7 +28,7 @@ describe("APNs", () => {
       key: pem,
       keyId: "ABC123DEFG",
       teamId: "8SEPFSC7S3",
-      topic: "com.mathieudutour.tickle",
+      topic: "me.dutour.mathieu.tickle",
     };
     const fetch = vi.fn(async () => new Response(null, { status: 200 }));
     vi.stubGlobal("fetch", fetch);
@@ -81,7 +81,7 @@ describe("APNs", () => {
       key: pem,
       keyId: "OTHERKEY01",
       teamId: "8SEPFSC7S3",
-      topic: "com.mathieudutour.tickle",
+      topic: "me.dutour.mathieu.tickle",
     };
     expect(
       await sendApns(

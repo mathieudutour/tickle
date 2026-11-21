@@ -39,7 +39,7 @@ Tests : `xcodebuild test -project Tickle.xcodeproj -scheme Tickle -destination '
      npx wrangler secret put APNS_KEY_ID
      ```
    L’équipe et l’identifiant de l’app sont déjà dans `wrangler.jsonc`. Sans la clé, l’app se synchronise quand elle est ouverte, mais ne reçoit ni alertes ni réveils.
-2. **App Store Connect** : crée l’app (identifiant `com.mathieudutour.tickle`, équipe 8SEPFSC7S3). Le nom doit être libre sur l’App Store. Xcode enregistre l’identifiant et ses capacités (push, domaines associés) au premier build signé.
+2. **App Store Connect** : crée l’app (identifiant `me.dutour.mathieu.tickle`, équipe 8SEPFSC7S3). Le nom doit être libre sur l’App Store. Xcode enregistre l’identifiant et ses capacités (push, domaines associés) au premier build signé.
 3. **TestFlight** : ajoute les testeurs dans App Store Connect › TestFlight.
 
 ## Publier sur TestFlight

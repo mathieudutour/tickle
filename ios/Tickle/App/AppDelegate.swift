@@ -6,7 +6,7 @@ import UserNotifications
 /// completed straight from the notification.
 @MainActor
 final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
-  static let refreshTask = "com.mathieudutour.tickle.refresh"
+  static let refreshTask = "me.dutour.mathieu.tickle.refresh"
   static let reminderCategory = "reminder"
   static let doneAction = "done"
 
