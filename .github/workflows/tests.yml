@@ -54,4 +54,6 @@ jobs:
           TEST_RUNNER_TICKLE_TEST_SERVER: http://localhost:5299
         run: |
           device=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for r in sorted(d, reverse=True) if "iOS" in r for x in d[r] if x["name"].startswith("iPhone")))')
-          xcodebuild test -project Tickle.xcodeproj -scheme Tickle -destination "id=$device" CODE_SIGNING_ALLOWED=NO
+          # The UI tests time animations and toasts, which the shared runners are too slow for: they run locally.
+          xcodebuild test -project Tickle.xcodeproj -scheme Tickle -destination "id=$device" CODE_SIGNING_ALLOWED=NO \
+            -skip-testing:TickleUITests

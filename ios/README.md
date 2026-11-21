@@ -26,7 +26,7 @@ Dans le simulateur, deux arguments de lancement aident :
 - `-TickleServer http://localhost:5173` utilise le serveur de `npm run dev` au lieu de celui de production ;
 - `-TickleOpen list:ID`, `today`, `tag:NOM`, `settings` ou `reminder:ID` ouvre directement un écran (en Debug).
 
-Tests : `xcodebuild test -project Tickle.xcodeproj -scheme Tickle -destination 'platform=iOS Simulator,name=iPhone 17'`. Le test de synchronisation (deux téléphones sur le vrai code du serveur) tourne quand un serveur de dev est lancé : `npm run dev -- --port 5299` à la racine, puis `TEST_RUNNER_TICKLE_TEST_SERVER=http://localhost:5299 xcodebuild test …`.
+Tests : `xcodebuild test -project Tickle.xcodeproj -scheme Tickle -destination 'platform=iOS Simulator,name=iPhone 17'`. Les tests d’interface (`TickleUITests`) partent d’un espace de test (`seed.json`, dates relatives à aujourd’hui) ; ceux de l’iPad se lancent sur un simulateur d’iPad. Ils chronomètrent des animations et des messages : la CI, trop lente pour eux, ne les lance pas. Le test de synchronisation (deux téléphones sur le vrai code du serveur) tourne quand un serveur de dev est lancé : `npm run dev -- --port 5299` à la racine, puis `TEST_RUNNER_TICKLE_TEST_SERVER=http://localhost:5299 xcodebuild test …`.
 
 ## Mise en place (une fois)
 
