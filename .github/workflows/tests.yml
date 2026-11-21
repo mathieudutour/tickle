@@ -26,3 +26,32 @@ jobs:
           name: playwright-report
           path: playwright-report
           retention-days: 7
+
+  ios:
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      # The app runs this bundle of the shared TypeScript: it must match the source.
+      - name: core.js is up to date
+        run: npm run build:native && git diff --exit-code ios/Tickle/Resources/core.js
+      - run: brew install xcodegen
+      - run: xcodegen generate
+        working-directory: ios
+      - name: Dev server for the live sync test
+        run: |
+          npx vite --port 5299 --strictPort > dev-server.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://localhost:5299/ > /dev/null && exit 0; sleep 2; done
+          cat dev-server.log; exit 1
+      - name: Tests
+        working-directory: ios
+        env:
+          TEST_RUNNER_TICKLE_TEST_SERVER: http://localhost:5299
+        run: |
+          device=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for r in sorted(d, reverse=True) if "iOS" in r for x in d[r] if x["name"].startswith("iPhone")))')
+          xcodebuild test -project Tickle.xcodeproj -scheme Tickle -destination "id=$device" CODE_SIGNING_ALLOWED=NO

@@ -444,6 +444,8 @@ export class Space extends DurableObject<Env> {
                   alert: { title, body },
                   sound: "default",
                   "thread-id": tag === "summary" ? "summary" : "reminders",
+                  // Offers « Fait » on the notification (ios/Tickle/App/AppDelegate.swift).
+                  ...(data.reminderId ? { category: "reminder" } : {}),
                 },
                 ...data,
               },

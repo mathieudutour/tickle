@@ -27,6 +27,7 @@ Rappels et listes partagés, comme l’app Rappels d’iOS, dans une web app ins
 - `worker/space.ts` (`Keys`) : la paire de clés VAPID, créée au premier usage, sans configuration.
 - `src/agents/tools.ts` : les outils pour agents, partagés par WebMCP (`src/webmcp/register.ts`) et le MCP distant (`src/shared/mcp.ts`).
 - `public/push-sw.js` : affiche les alertes et ouvre le rappel touché. Il est chargé dans le service worker généré par `vite-plugin-pwa`.
+- `ios/` : l’app iOS native, qui exécute ce même code partagé dans JavaScriptCore (voir `ios/README.md`). Le serveur lui envoie ses alertes par APNs (`worker/apns.ts`).
 
 Tous les espaces existent sur le serveur dès le premier lancement en ligne : c’est ce qui permet les alertes, le partage et les agents. Hors ligne, les changements attendent et partent à la reconnexion.
 

@@ -16,4 +16,7 @@
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Space", "Keys"] }],
   "observability": { "enabled": true },
+  // The iOS app's push notifications (worker/apns.ts). The key itself and its id are secrets:
+  // `npx wrangler secret put APNS_KEY` (the .p8 file's content) and `npx wrangler secret put APNS_KEY_ID`.
+  "vars": { "APNS_TEAM_ID": "8SEPFSC7S3", "APNS_TOPIC": "com.mathieudutour.tickle" },
 }

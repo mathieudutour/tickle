@@ -1,0 +1,10 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["8SEPFSC7S3.com.mathieudutour.tickle"],
+        "components": [{ "/": "/", "#": "rejoindre=*", "comment": "Invitation links open the iOS app" }]
+      }
+    ]
+  }
+}
