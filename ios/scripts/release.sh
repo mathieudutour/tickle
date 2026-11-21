@@ -19,7 +19,7 @@ build=$(date -u +%Y%m%d%H%M)
 rm -rf build/Tickle.xcarchive build/export
 xcodebuild archive -project Tickle.xcodeproj -scheme Tickle -configuration Release \
   -destination 'generic/platform=iOS' -archivePath build/Tickle.xcarchive \
-  CURRENT_PROJECT_VERSION="$build" -allowProvisioningUpdates "${auth[@]}"
+  CURRENT_PROJECT_VERSION="$build" -allowProvisioningUpdates ${auth[@]+"${auth[@]}"}
 xcodebuild -exportArchive -archivePath build/Tickle.xcarchive -exportOptionsPlist ExportOptions.plist \
-  -exportPath build/export -allowProvisioningUpdates "${auth[@]}"
+  -exportPath build/export -allowProvisioningUpdates ${auth[@]+"${auth[@]}"}
 echo "Uploaded build $build. It shows in TestFlight once App Store Connect has processed it (a few minutes)."
